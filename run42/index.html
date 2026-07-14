@@ -647,6 +647,19 @@ button {
 
 .cal-day.is-empty { background: transparent; }
 
+.heatmap-wrap {
+  width: 100%;
+  overflow-x: auto;
+}
+.heatmap-wrap svg.heatmap {
+  display: block;
+  min-width: 100%;
+  height: auto;
+}
+.heatmap rect {
+  transition: fill 0.15s ease;
+}
+
 /* ---------- Programme ---------- */
 
 .program-list { background: var(--ink-soft); border-radius: 8px; padding: 8px 20px; }
@@ -1131,6 +1144,62 @@ function monthCalendar(activities, year, month) {
     <div class="month-calendar">
       <div class="cal-grid cal-dow-row">${dowHtml}</div>
       <div class="cal-grid">${cellsHtml}</div>
+    </div>
+  `;
+}
+
+function yearHeatmap(dates) {
+  const dateSet = new Set(dates);
+  const year = new Date().getFullYear();
+  const cellSize = 11, cellGap = 3, padLeft = 20, padTop = 16;
+
+  const start = new Date(year, 0, 1);
+  const startDow = (start.getDay() + 6) % 7; // lundi = 0
+  const gridStart = new Date(start);
+  gridStart.setDate(gridStart.getDate() - startDow);
+
+  const end = new Date(year, 11, 31);
+  const totalDays = Math.round((end - gridStart) / 86400000) + 1;
+  const totalWeeks = Math.ceil(totalDays / 7);
+
+  const cells = [];
+  const monthLabelsSeen = new Set();
+  const monthLabels = [];
+
+  for (let w = 0; w < totalWeeks; w++) {
+    for (let d = 0; d < 7; d++) {
+      const day = new Date(gridStart);
+      day.setDate(day.getDate() + w * 7 + d);
+      if (day.getFullYear() !== year) continue;
+      const iso = `${day.getFullYear()}-${String(day.getMonth() + 1).padStart(2, "0")}-${String(day.getDate()).padStart(2, "0")}`;
+      const x = padLeft + w * (cellSize + cellGap);
+      const y = padTop + d * (cellSize + cellGap);
+      cells.push({ x, y, iso, active: dateSet.has(iso) });
+
+      if (day.getDate() <= 7 && !monthLabelsSeen.has(day.getMonth())) {
+        monthLabelsSeen.add(day.getMonth());
+        monthLabels.push({ x, label: MONTH_LABELS_SHORT[day.getMonth()] });
+      }
+    }
+  }
+
+  const width = padLeft + totalWeeks * (cellSize + cellGap);
+  const height = padTop + 7 * (cellSize + cellGap);
+
+  const cellsHtml = cells.map((c) =>
+    `<rect x="${c.x}" y="${c.y}" width="${cellSize}" height="${cellSize}" rx="2" fill="${c.active ? "var(--rust)" : "rgba(238,241,232,0.08)"}"><title>${c.iso}</title></rect>`
+  ).join("");
+
+  const labelsHtml = monthLabels.map((m) =>
+    `<text x="${m.x}" y="10" font-size="9" fill="rgba(238,241,232,0.5)" font-family="var(--font-mono)">${m.label}</text>`
+  ).join("");
+
+  return `
+    <div class="heatmap-wrap">
+      <svg viewBox="0 0 ${width} ${height}" class="heatmap" preserveAspectRatio="xMinYMin meet">
+        ${labelsHtml}
+        ${cellsHtml}
+      </svg>
     </div>
   `;
 }
