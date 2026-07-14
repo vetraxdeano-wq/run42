@@ -6,8 +6,8 @@
 // ============================================================
 
 export const CONFIG = {
-  SUPABASE_URL: "https://TON-PROJET.supabase.co",
-  SUPABASE_ANON_KEY: "TON_ANON_KEY",
+  SUPABASE_URL: "https://wbljbtwstcxqfqsnlusn.supabase.co",
+  SUPABASE_ANON_KEY: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6IndibGpidHdzdGN4cWZxc25sdXNuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQwMTkwNTksImV4cCI6MjA5OTU5NTA1OX0.9_iNJhGyVTl2IuXcbxsRzYHsYzp-VebOG2aohWwfogs",
 
   STRAVA_CLIENT_ID: "TON_STRAVA_CLIENT_ID",
   // L'URL doit être EXACTEMENT celle enregistrée sur
