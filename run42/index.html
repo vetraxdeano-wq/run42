@@ -647,6 +647,34 @@ button {
 
 .cal-day.is-empty { background: transparent; }
 
+.panel-header-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+.panel-header-row h2 { margin: 0; }
+
+.btn-chip {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--paper);
+  background: rgba(238,241,232,0.08);
+  border: 1px solid rgba(238,241,232,0.16);
+  border-radius: 999px;
+  padding: 6px 12px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.btn-chip:hover { background: rgba(238,241,232,0.14); }
+
+.panel-subtitle {
+  margin: 18px 0 8px;
+  font-size: 14px;
+  color: rgba(238,241,232,0.7);
+}
+
 .heatmap-wrap {
   width: 100%;
   overflow-x: auto;
@@ -744,6 +772,7 @@ let state = {
   calendarMonth: new Date().getMonth(),
   profilSaving: false,
   profilSaved: false,
+  chartFullYear: false,
 };
 
 function setState(patch) {
@@ -1089,19 +1118,21 @@ function computeMonthlyDistances(activities, year) {
   return monthsKm;
 }
 
-function monthlyChart(monthsKm) {
+function monthlyChart(monthsKm, monthIndices) {
+  const indices = monthIndices || monthsKm.map((_, i) => i);
+  const values = indices.map((i) => monthsKm[i]);
   const width = 600, height = 150, padTop = 16, padBottom = 22, padSide = 24;
-  const max = Math.max(...monthsKm, 1);
-  const stepX = (width - padSide * 2) / 11;
-  const points = monthsKm.map((km, i) => {
-    const x = padSide + i * stepX;
+  const max = Math.max(...values, 1);
+  const stepX = values.length > 1 ? (width - padSide * 2) / (values.length - 1) : 0;
+  const points = values.map((km, i) => {
+    const x = values.length > 1 ? padSide + i * stepX : width / 2;
     const y = height - padBottom - (km / max) * (height - padTop - padBottom);
-    return { x, y, km };
+    return { x, y, km, monthIndex: indices[i] };
   });
   const pathD = points.map((p, i) => `${i === 0 ? "M" : "L"}${p.x.toFixed(1)},${p.y.toFixed(1)}`).join(" ");
   const areaD = `${pathD} L${points[points.length - 1].x.toFixed(1)},${height - padBottom} L${points[0].x.toFixed(1)},${height - padBottom} Z`;
   const dots = points.map((p) => `<circle cx="${p.x.toFixed(1)}" cy="${p.y.toFixed(1)}" r="3" fill="var(--rust)" />`).join("");
-  const labels = points.map((p, i) => `<text x="${p.x.toFixed(1)}" y="${height - 4}" text-anchor="middle" font-size="9" fill="rgba(238,241,232,0.5)" font-family="var(--font-mono)">${MONTH_LABELS_SHORT[i]}</text>`).join("");
+  const labels = points.map((p) => `<text x="${p.x.toFixed(1)}" y="${height - 4}" text-anchor="middle" font-size="9" fill="rgba(238,241,232,0.5)" font-family="var(--font-mono)">${MONTH_LABELS_SHORT[p.monthIndex]}</text>`).join("");
 
   return `
     <div class="distance-chart-wrap">
@@ -1314,6 +1345,15 @@ function tabRecords() {
   `;
 }
 
+function monthChartIndices() {
+  const currentMonth = new Date().getMonth();
+  if (state.chartFullYear) {
+    return Array.from({ length: currentMonth + 1 }, (_, i) => i);
+  }
+  const startMonth = Math.max(0, currentMonth - 2);
+  return Array.from({ length: currentMonth - startMonth + 1 }, (_, i) => startMonth + i);
+}
+
 function tabAccount() {
   const user = state.session?.user;
   const avatarUrl = user?.user_metadata?.avatar_url;
@@ -1352,11 +1392,14 @@ function tabAccount() {
     </section>
 
     <section class="panel">
-      <h2>${MONTH_LABELS_LONG[new Date().getMonth()]} ${new Date().getFullYear()}</h2>
-      ${monthlyChart(computeMonthlyDistances(state.allActivities, new Date().getFullYear()))}
-    </section>
-
-    <section class="panel">
+      <div class="panel-header-row">
+        <h2>Distance mensuelle</h2>
+        <button class="btn-chip" id="btn-toggle-chart-range">
+          ${state.chartFullYear ? "3 derniers mois" : "Année entière"}
+        </button>
+      </div>
+      ${monthlyChart(computeMonthlyDistances(state.allActivities, new Date().getFullYear()), monthChartIndices())}
+      <h3 class="panel-subtitle">Ce mois-ci</h3>
       ${monthCalendar(state.allActivities, new Date().getFullYear(), new Date().getMonth())}
     </section>
 
@@ -1482,6 +1525,11 @@ function attachHandlers() {
 
   const logoutBtn = document.getElementById("btn-logout");
   if (logoutBtn) logoutBtn.addEventListener("click", logout);
+
+  const chartToggleBtn = document.getElementById("btn-toggle-chart-range");
+  if (chartToggleBtn) {
+    chartToggleBtn.addEventListener("click", () => setState({ chartFullYear: !state.chartFullYear }));
+  }
 
   document.querySelectorAll(".nav-item").forEach((btn) => {
     btn.addEventListener("click", () => setState({ tab: btn.dataset.tab, error: null }));
