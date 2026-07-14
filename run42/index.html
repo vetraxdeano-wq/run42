@@ -327,7 +327,8 @@ button {
 
 .activity-row {
   display: grid;
-  grid-template-columns: 90px 1fr 90px 90px;
+  grid-template-columns: 90px 1fr 90px 90px 30px;
+  align-items: center;
   gap: 12px;
   padding: 10px 0;
   border-bottom: 1px solid rgba(91,122,90,0.15);
@@ -336,6 +337,19 @@ button {
 }
 
 .activity-date { color: rgba(238,241,232,0.6); }
+
+.activity-delete-btn {
+  background: none;
+  border: none;
+  padding: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: rgba(238,241,232,0.4);
+}
+
+.activity-delete-btn svg { width: 17px; height: 17px; }
+.activity-delete-btn:hover { color: var(--rust); }
 
 /* ---------- Activity form ---------- */
 
@@ -540,6 +554,51 @@ button {
   font-size: 13px;
   font-family: var(--font-mono);
 }
+
+.account-pseudo {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  font-family: var(--font-display);
+  font-size: 18px;
+  letter-spacing: 0.3px;
+  color: var(--paper);
+  margin: 0;
+}
+
+.pseudo-edit-btn {
+  background: none;
+  border: none;
+  padding: 4px;
+  display: flex;
+  align-items: center;
+  color: rgba(238,241,232,0.45);
+}
+.pseudo-edit-btn svg { width: 15px; height: 15px; }
+.pseudo-edit-btn:hover { color: var(--rust); }
+
+.pseudo-form {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  align-items: center;
+  margin-top: 4px;
+}
+
+.pseudo-form input {
+  text-align: center;
+  padding: 8px 12px;
+  border-radius: 4px;
+  border: 1px solid rgba(238,241,232,0.2);
+  background: var(--ink-soft);
+  color: var(--paper);
+  font-size: 15px;
+  font-family: var(--font-body);
+  max-width: 220px;
+}
+
+.pseudo-form-actions { display: flex; gap: 8px; }
 
 .stats-row {
   display: flex;
@@ -805,6 +864,9 @@ let state = {
   calendarMonth: new Date().getMonth(),
   profilSaving: false,
   profilSaved: false,
+  profilEditing: false,
+  pseudoEditing: false,
+  pseudoSaving: false,
   chartFullYear: false,
 };
 
@@ -825,6 +887,8 @@ const ICONS = {
   add: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>`,
   programme: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="6" y="4" width="12" height="17" rx="2"/><path d="M9 4V3a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v1"/><line x1="9" y1="10" x2="15" y2="10"/><line x1="9" y1="13" x2="15" y2="13"/><line x1="9" y1="16" x2="13" y2="16"/></svg>`,
   account: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 4-6 8-6s8 2 8 6"/></svg>`,
+  trash: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16"/><path d="M9 7V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v3"/><path d="M6 7l1 13a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1l1-13"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></svg>`,
+  edit: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>`,
 };
 
 // ============================================================
@@ -1114,6 +1178,78 @@ async function uploadAvatar(file) {
 }
 
 // ============================================================
+// Profil (niveau / objectif / disponibilités) & pseudo
+// ============================================================
+
+function getProfil() {
+  return state.session?.user?.user_metadata?.profil || null;
+}
+
+function getPseudo() {
+  const user = state.session?.user;
+  if (!user) return "";
+  return user.user_metadata?.pseudo || (user.email ? user.email.split("@")[0] : "");
+}
+
+async function savePseudo(pseudo) {
+  const clean = (pseudo || "").trim();
+  if (!clean) {
+    setState({ error: "Le pseudo ne peut pas être vide." });
+    return;
+  }
+  setState({ pseudoSaving: true, error: null });
+  try {
+    const { data: updated, error } = await supabase.auth.updateUser({
+      data: { pseudo: clean },
+    });
+    if (error) throw error;
+    setState({
+      pseudoSaving: false,
+      pseudoEditing: false,
+      session: { ...state.session, user: updated.user },
+    });
+  } catch (e) {
+    setState({ pseudoSaving: false, error: "Échec de l'enregistrement du pseudo : " + e.message });
+  }
+}
+
+async function saveProfil(profil) {
+  setState({ profilSaving: true, error: null });
+  try {
+    const { data: updated, error } = await supabase.auth.updateUser({
+      data: { profil },
+    });
+    if (error) throw error;
+    setState({
+      profilSaving: false,
+      profilSaved: true,
+      profilEditing: false,
+      session: { ...state.session, user: updated.user },
+    });
+  } catch (e) {
+    setState({ profilSaving: false, error: "Échec de l'enregistrement du profil : " + e.message });
+  }
+}
+
+// ============================================================
+// Suppression d'une activité
+// ============================================================
+
+async function deleteActivity(activityId) {
+  setState({ loading: true, error: null });
+  try {
+    const { error } = await supabase
+      .from("activities")
+      .delete()
+      .eq("id", activityId);
+    if (error) throw error;
+    loadAppData();
+  } catch (e) {
+    setState({ loading: false, error: "Échec de la suppression : " + e.message });
+  }
+}
+
+// ============================================================
 // Stats & calendrier (onglet Compte)
 // ============================================================
 
@@ -1340,6 +1476,7 @@ function activityRow(a) {
       <span>${km} km</span>
       <span>${formatTemps(a.duree_s)}</span>
       <span class="muted">${allure}</span>
+      <button class="activity-delete-btn" data-id="${a.id}" aria-label="Supprimer cette course" title="Supprimer">${ICONS.trash}</button>
     </div>
   `;
 }
@@ -1378,6 +1515,41 @@ function tabRecords() {
   `;
 }
 
+function tabProgramme() {
+  const profil = getProfil();
+
+  if (!profil) {
+    return `
+      <section class="panel">
+        <h2>Programme</h2>
+        <p class="muted">Tu n'as pas encore configuré ton profil. Rends-toi dans <strong>Mon compte</strong> pour indiquer ton niveau, ton objectif et tes disponibilités : ton programme personnalisé s'affichera ici.</p>
+      </section>
+      <section class="panel">
+        <button class="btn-secondary" id="btn-goto-account-profil">Configurer mon profil</button>
+      </section>
+    `;
+  }
+
+  const sessions = generateProgram(profil);
+  const rowsHtml = sessions.map((s) => `
+    <div class="program-row">
+      <span class="program-day">${s.jour}</span>
+      <span class="program-desc">${s.type}</span>
+    </div>
+  `).join("");
+
+  return `
+    <section class="panel">
+      <h2>Ton programme</h2>
+      <p class="muted">${describeProfil(profil)}</p>
+      <div class="program-list">${rowsHtml}</div>
+    </section>
+    <section class="panel">
+      <button class="btn-secondary" id="btn-goto-account-profil">Modifier mon profil</button>
+    </section>
+  `;
+}
+
 function monthChartIndices() {
   const currentMonth = new Date().getMonth();
   if (state.chartFullYear) {
@@ -1406,7 +1578,26 @@ function calendarNavHeader() {
 function tabAccount() {
   const user = state.session?.user;
   const avatarUrl = user?.user_metadata?.avatar_url;
+  const pseudo = getPseudo();
   const counts = computeCounts(state.allActivities.map((a) => a.date));
+  const profil = getProfil();
+
+  const pseudoBlockHtml = state.pseudoEditing
+    ? `
+      <form id="pseudo-form" class="pseudo-form">
+        <input type="text" id="f-pseudo" value="${pseudo}" maxlength="24" placeholder="Ton pseudo" required />
+        <div class="pseudo-form-actions">
+          <button type="submit" class="btn-chip" ${state.pseudoSaving ? "disabled" : ""}>${state.pseudoSaving ? "…" : "Enregistrer"}</button>
+          <button type="button" class="btn-chip" id="btn-cancel-pseudo">Annuler</button>
+        </div>
+      </form>
+    `
+    : `
+      <p class="account-pseudo">
+        ${pseudo}
+        <button class="pseudo-edit-btn" id="btn-edit-pseudo" aria-label="Modifier le pseudo">${ICONS.edit}</button>
+      </p>
+    `;
 
   return `
     <section class="panel account-header">
@@ -1414,12 +1605,12 @@ function tabAccount() {
         ${
           avatarUrl
             ? `<img src="${avatarUrl}" alt="Photo de profil" />`
-            : `<span class="avatar-initial">${(user?.email || "?")[0].toUpperCase()}</span>`
+            : `<span class="avatar-initial">${(pseudo || "?")[0].toUpperCase()}</span>`
         }
         <span class="avatar-edit-badge">${state.avatarUploading ? "…" : "✎"}</span>
       </div>
       <input type="file" id="f-avatar" accept="image/*" hidden />
-      <p class="account-email">${user?.email || ""}</p>
+      ${pseudoBlockHtml}
     </section>
 
     <section class="panel">
@@ -1452,14 +1643,52 @@ function tabAccount() {
       ${monthCalendar(state.allActivities, state.calendarYear, state.calendarMonth)}
     </section>
 
+    <section class="panel" id="profil-section">
+      <div class="panel-header-row">
+        <h2>Personnalisation</h2>
+        ${profil && !state.profilEditing ? `<button class="btn-chip" id="btn-edit-profil">Modifier</button>` : ""}
+      </div>
+      ${
+        profil && !state.profilEditing
+          ? `
+            <p class="muted">${describeProfil(profil)}</p>
+          `
+          : profilForm(profil)
+      }
+    </section>
+
     <section class="panel">
       <button class="btn-secondary" id="btn-logout">Déconnexion</button>
     </section>
   `;
 }
 
-const TAB_TITLES = { activities: "Activités", records: "Records", account: "Mon compte" };
-const TAB_RENDERERS = { activities: tabActivities, records: tabRecords, account: tabAccount };
+function profilForm(profil) {
+  const niveauOptions = NIVEAUX.map((n) => `<option value="${n.id}" ${profil?.niveau === n.id ? "selected" : ""}>${n.label}</option>`).join("");
+  const objectifOptions = OBJECTIFS.map((o) => `<option value="${o.id}" ${profil?.objectif === o.id ? "selected" : ""}>${o.label}</option>`).join("");
+  const disposOptions = DISPOS.map((d) => `<option value="${d.id}" ${profil?.joursDispo === d.id ? "selected" : ""}>${d.label}</option>`).join("");
+
+  return `
+    <form id="profil-form" class="activity-form">
+      <p class="muted">Indique ton niveau et ton objectif : on te propose un programme d'entraînement adapté dans l'onglet Programme.</p>
+      <label>Niveau
+        <select id="f-niveau" required>${niveauOptions}</select>
+      </label>
+      <label>Objectif
+        <select id="f-objectif" required>${objectifOptions}</select>
+      </label>
+      <label>Disponibilités
+        <select id="f-dispo" required>${disposOptions}</select>
+      </label>
+      <button type="submit" class="btn-primary" ${state.profilSaving ? "disabled" : ""}>
+        ${state.profilSaving ? "Enregistrement…" : "Enregistrer mon profil"}
+      </button>
+    </form>
+  `;
+}
+
+const TAB_TITLES = { activities: "Accueil", records: "Records", programme: "Programme", account: "Mon compte" };
+const TAB_RENDERERS = { activities: tabActivities, records: tabRecords, programme: tabProgramme, account: tabAccount };
 
 function viewShell() {
   const navItem = (tab, icon) => `
@@ -1482,6 +1711,7 @@ function viewShell() {
       ${navItem("activities", ICONS.activities)}
       ${navItem("records", ICONS.records)}
       <button class="nav-add" id="btn-add-activity">${ICONS.add}</button>
+      ${navItem("programme", ICONS.programme)}
       ${navItem("account", ICONS.account)}
     </nav>
   `;
@@ -1619,6 +1849,51 @@ function attachHandlers() {
 
   const cancelBtn = document.getElementById("btn-cancel");
   if (cancelBtn) cancelBtn.addEventListener("click", () => setState({ route: "dashboard", error: null }));
+
+  const editPseudoBtn = document.getElementById("btn-edit-pseudo");
+  if (editPseudoBtn) editPseudoBtn.addEventListener("click", () => setState({ pseudoEditing: true, error: null }));
+
+  const cancelPseudoBtn = document.getElementById("btn-cancel-pseudo");
+  if (cancelPseudoBtn) cancelPseudoBtn.addEventListener("click", () => setState({ pseudoEditing: false, error: null }));
+
+  const pseudoForm = document.getElementById("pseudo-form");
+  if (pseudoForm) {
+    pseudoForm.addEventListener("submit", (e) => {
+      e.preventDefault();
+      savePseudo(document.getElementById("f-pseudo").value);
+    });
+  }
+
+  const editProfilBtn = document.getElementById("btn-edit-profil");
+  if (editProfilBtn) editProfilBtn.addEventListener("click", () => setState({ profilEditing: true, error: null }));
+
+  const profilFormEl = document.getElementById("profil-form");
+  if (profilFormEl) {
+    profilFormEl.addEventListener("submit", (e) => {
+      e.preventDefault();
+      saveProfil({
+        niveau: document.getElementById("f-niveau").value,
+        objectif: document.getElementById("f-objectif").value,
+        joursDispo: document.getElementById("f-dispo").value,
+      });
+    });
+  }
+
+  const gotoAccountProfilBtn = document.getElementById("btn-goto-account-profil");
+  if (gotoAccountProfilBtn) {
+    gotoAccountProfilBtn.addEventListener("click", () =>
+      setState({ tab: "account", profilEditing: true, error: null })
+    );
+  }
+
+  document.querySelectorAll(".activity-delete-btn").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const id = btn.dataset.id;
+      if (window.confirm("Supprimer cette course ? Cette action est irréversible.")) {
+        deleteActivity(id);
+      }
+    });
+  });
 
   const avatarTrigger = document.getElementById("avatar-trigger");
   const avatarInput = document.getElementById("f-avatar");
