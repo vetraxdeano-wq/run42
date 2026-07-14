@@ -675,6 +675,39 @@ button {
   color: rgba(238,241,232,0.7);
 }
 
+.calendar-nav {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  margin: 18px 0 8px;
+}
+.calendar-nav-label {
+  margin: 0;
+  min-width: 140px;
+  text-align: center;
+}
+.cal-nav-btn {
+  font-family: var(--font-mono);
+  font-size: 16px;
+  line-height: 1;
+  color: var(--paper);
+  background: rgba(238,241,232,0.08);
+  border: 1px solid rgba(238,241,232,0.16);
+  border-radius: 50%;
+  width: 28px;
+  height: 28px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.cal-nav-btn:hover:not(:disabled) { background: rgba(238,241,232,0.14); }
+.cal-nav-btn:disabled {
+  opacity: 0.3;
+  cursor: default;
+}
+
 .heatmap-wrap {
   width: 100%;
   overflow-x: auto;
@@ -1354,6 +1387,22 @@ function monthChartIndices() {
   return Array.from({ length: currentMonth - startMonth + 1 }, (_, i) => startMonth + i);
 }
 
+function calendarNavHeader() {
+  const now = new Date();
+  const isCurrentMonth = state.calendarYear === now.getFullYear() && state.calendarMonth === now.getMonth();
+  const label = state.calendarYear === now.getFullYear() && state.calendarMonth === now.getMonth()
+    ? "Ce mois-ci"
+    : `${MONTH_LABELS_LONG[state.calendarMonth]} ${state.calendarYear}`;
+
+  return `
+    <div class="calendar-nav">
+      <button class="cal-nav-btn" id="btn-cal-prev" aria-label="Mois précédent">‹</button>
+      <h3 class="panel-subtitle calendar-nav-label">${label}</h3>
+      <button class="cal-nav-btn" id="btn-cal-next" ${isCurrentMonth ? "disabled" : ""} aria-label="Mois suivant">›</button>
+    </div>
+  `;
+}
+
 function tabAccount() {
   const user = state.session?.user;
   const avatarUrl = user?.user_metadata?.avatar_url;
@@ -1399,8 +1448,8 @@ function tabAccount() {
         </button>
       </div>
       ${monthlyChart(computeMonthlyDistances(state.allActivities, new Date().getFullYear()), monthChartIndices())}
-      <h3 class="panel-subtitle">Ce mois-ci</h3>
-      ${monthCalendar(state.allActivities, new Date().getFullYear(), new Date().getMonth())}
+      ${calendarNavHeader()}
+      ${monthCalendar(state.allActivities, state.calendarYear, state.calendarMonth)}
     </section>
 
     <section class="panel">
@@ -1529,6 +1578,36 @@ function attachHandlers() {
   const chartToggleBtn = document.getElementById("btn-toggle-chart-range");
   if (chartToggleBtn) {
     chartToggleBtn.addEventListener("click", () => setState({ chartFullYear: !state.chartFullYear }));
+  }
+
+  const calPrevBtn = document.getElementById("btn-cal-prev");
+  if (calPrevBtn) {
+    calPrevBtn.addEventListener("click", () => {
+      let { calendarYear, calendarMonth } = state;
+      calendarMonth -= 1;
+      if (calendarMonth < 0) {
+        calendarMonth = 11;
+        calendarYear -= 1;
+      }
+      setState({ calendarYear, calendarMonth });
+    });
+  }
+
+  const calNextBtn = document.getElementById("btn-cal-next");
+  if (calNextBtn) {
+    calNextBtn.addEventListener("click", () => {
+      const now = new Date();
+      let { calendarYear, calendarMonth } = state;
+      calendarMonth += 1;
+      if (calendarMonth > 11) {
+        calendarMonth = 0;
+        calendarYear += 1;
+      }
+      if (calendarYear > now.getFullYear() || (calendarYear === now.getFullYear() && calendarMonth > now.getMonth())) {
+        return;
+      }
+      setState({ calendarYear, calendarMonth });
+    });
   }
 
   document.querySelectorAll(".nav-item").forEach((btn) => {
