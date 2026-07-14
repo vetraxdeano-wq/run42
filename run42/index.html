@@ -569,30 +569,116 @@ button {
   margin-top: 4px;
 }
 
-.year-heatmap-wrap {
+.distance-chart-wrap {
+  background: var(--ink-soft);
+  border-radius: 8px;
+  padding: 14px 10px 6px;
+}
+
+.distance-chart { width: 100%; height: auto; display: block; }
+
+.month-selector-scroll {
+  display: flex;
+  gap: 8px;
   overflow-x: auto;
+  padding-bottom: 12px;
+  margin-bottom: 12px;
+  scrollbar-width: none;
+}
+
+.month-selector-scroll::-webkit-scrollbar { display: none; }
+
+.month-chip {
+  flex: 0 0 auto;
+  padding: 8px 16px;
+  border-radius: 999px;
+  border: none;
+  background: rgba(238,241,232,0.06);
+  color: rgba(238,241,232,0.4);
+  font-family: var(--font-mono);
+  font-size: 13px;
+  white-space: nowrap;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+
+.month-chip.is-active {
+  background: var(--rust);
+  color: var(--paper);
+}
+
+.month-calendar {
   background: var(--ink-soft);
   border-radius: 8px;
   padding: 14px;
 }
 
-.year-heatmap {
+.cal-grid {
   display: grid;
-  grid-auto-flow: column;
-  grid-template-rows: repeat(7, 11px);
-  gap: 3px;
-  width: max-content;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 6px;
 }
 
-.year-cell {
-  width: 11px;
-  height: 11px;
-  border-radius: 2px;
-  background: rgba(238,241,232,0.08);
+.cal-dow-row { margin-bottom: 6px; }
+
+.cal-dow {
+  text-align: center;
+  font-size: 10px;
+  color: rgba(238,241,232,0.4);
+  font-family: var(--font-mono);
 }
 
-.year-cell.active { background: var(--rust); }
-.year-cell.out-of-year { visibility: hidden; }
+.cal-day {
+  aspect-ratio: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 6px;
+  background: rgba(238,241,232,0.05);
+  font-size: 12px;
+  font-family: var(--font-mono);
+  color: rgba(238,241,232,0.6);
+}
+
+.cal-day.is-active {
+  background: var(--rust);
+  color: var(--paper);
+  font-weight: 600;
+}
+
+.cal-day.is-empty { background: transparent; }
+
+/* ---------- Programme ---------- */
+
+.program-list { background: var(--ink-soft); border-radius: 8px; padding: 8px 20px; }
+
+.program-row {
+  display: grid;
+  grid-template-columns: 90px 1fr;
+  gap: 14px;
+  align-items: center;
+  padding: 14px 0;
+  border-bottom: 1px solid rgba(91,122,90,0.2);
+}
+
+.program-row:last-child { border-bottom: none; }
+
+.program-day {
+  font-family: var(--font-mono);
+  font-size: 13px;
+  color: rgba(238,241,232,0.65);
+}
+
+.program-desc { font-size: 14px; }
+
+.activity-form select {
+  padding: 10px 12px;
+  border-radius: 4px;
+  border: 1px solid rgba(238,241,232,0.15);
+  background: var(--ink);
+  color: var(--paper);
+  font-size: 15px;
+  font-family: var(--font-mono);
+}
 
 .btn-secondary {
   width: 100%;
@@ -630,17 +716,21 @@ button {
 
 let state = {
   route: "login",       // 'login' | 'dashboard' | 'add-activity'
-  tab: "activities",    // 'activities' | 'records' | 'account'
+  tab: "activities",    // 'activities' | 'records' | 'programme' | 'account'
   session: null,
   loading: false,
   prs: [],
   activities: [],
-  allDates: [],          // toutes les dates de courses (pour stats + calendrier)
+  allActivities: [],     // { date, distance_m } de toutes les courses (pour stats + calendrier + graphique)
   splitInputsCount: 0,
   error: null,
   info: null,
   authAction: "signin",  // 'signin' | 'signup'
   avatarUploading: false,
+  calendarYear: new Date().getFullYear(),
+  calendarMonth: new Date().getMonth(),
+  profilSaving: false,
+  profilSaved: false,
 };
 
 function setState(patch) {
@@ -655,11 +745,72 @@ const root = document.getElementById("app");
 // ============================================================
 
 const ICONS = {
-  activities: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="4" y1="6" x2="20" y2="6"/><line x1="4" y1="12" x2="20" y2="12"/><line x1="4" y1="18" x2="14" y2="18"/></svg>`,
+  activities: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 11.5L12 4l8 7.5"/><path d="M6 10v9a1 1 0 0 0 1 1h3v-6h4v6h3a1 1 0 0 0 1-1v-9"/></svg>`,
   records: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="5"/><path d="M8.5 12.5L7 21l5-3 5 3-1.5-8.5"/></svg>`,
   add: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>`,
+  programme: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="6" y="4" width="12" height="17" rx="2"/><path d="M9 4V3a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v1"/><line x1="9" y1="10" x2="15" y2="10"/><line x1="9" y1="13" x2="15" y2="13"/><line x1="9" y1="16" x2="13" y2="16"/></svg>`,
   account: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 4-6 8-6s8 2 8 6"/></svg>`,
 };
+
+// ============================================================
+// Personnalisation du profil (niveau / objectif / disponibilités)
+// ============================================================
+
+const NIVEAUX = [
+  { id: "debutant", label: "Débutant" },
+  { id: "intermediaire", label: "Intermédiaire" },
+  { id: "avance", label: "Avancé" },
+  { id: "confirme", label: "Confirmé" },
+];
+
+const OBJECTIFS = [
+  { id: "forme", label: "Forme générale" },
+  { id: "perte-poids", label: "Perte de poids" },
+  { id: "5k", label: "5 km" },
+  { id: "10k", label: "10 km" },
+  { id: "semi", label: "Semi-marathon" },
+  { id: "marathon", label: "Marathon" },
+];
+
+const DISPOS = [
+  { id: "2", label: "2 jours / semaine" },
+  { id: "3", label: "3 jours / semaine" },
+  { id: "4", label: "4 jours / semaine" },
+  { id: "5", label: "5+ jours / semaine" },
+];
+
+const OBJECTIF_SESSIONS = {
+  "perte-poids": ["Footing facile régulier", "Fractionné léger (30/30)", "Sortie longue tranquille", "Récupération active + gainage", "Footing avec accélérations"],
+  "forme": ["Footing facile", "Fractionné léger", "Sortie longue tranquille", "Récupération active", "Footing + gammes"],
+  "5k": ["Footing facile", "VMA courte (200-400m)", "Seuil (allure soutenue)", "Sortie longue modérée", "Footing de récupération"],
+  "10k": ["Footing facile", "VMA moyenne (400-1000m)", "Seuil", "Sortie longue", "Footing de récupération"],
+  "semi": ["Footing facile", "Seuil", "Sortie longue progressive", "Fractionné long (1000-2000m)", "Footing de récupération"],
+  "marathon": ["Footing facile", "Sortie longue avec allure marathon", "Seuil", "Fractionné", "Footing de récupération", "Sortie longue"],
+};
+
+const NIVEAU_SUFFIX = {
+  debutant: " (intensité douce, échauffement long)",
+  intermediaire: "",
+  avance: " (intensité soutenue)",
+  confirme: " (charge élevée, récupération courte)",
+};
+
+function generateProgram(profil) {
+  const pool = OBJECTIF_SESSIONS[profil.objectif] || OBJECTIF_SESSIONS.forme;
+  const n = Math.min(parseInt(profil.joursDispo, 10) || 3, pool.length);
+  const suffix = NIVEAU_SUFFIX[profil.niveau] || "";
+  const sessions = [];
+  for (let i = 0; i < n; i++) {
+    sessions.push({ jour: `Séance ${i + 1}`, type: pool[i] + suffix });
+  }
+  return sessions;
+}
+
+function describeProfil(profil) {
+  const niveauLabel = NIVEAUX.find((n) => n.id === profil.niveau)?.label || profil.niveau;
+  const objectifLabel = OBJECTIFS.find((o) => o.id === profil.objectif)?.label || profil.objectif;
+  return `Niveau ${niveauLabel} · Objectif ${objectifLabel} · ${profil.joursDispo} jour(s)/semaine`;
+}
 
 // ============================================================
 // Constantes distances
@@ -727,7 +878,7 @@ async function checkSession() {
 
 async function logout() {
   await supabase.auth.signOut();
-  setState({ session: null, route: "login", prs: [], activities: [], allDates: [] });
+  setState({ session: null, route: "login", prs: [], activities: [], allActivities: [] });
 }
 
 // ============================================================
@@ -751,16 +902,16 @@ async function loadAppData() {
 
     const { data: allActivities } = await supabase
       .from("activities")
-      .select("date");
+      .select("date, distance_m");
 
     setState({
       prs: prs || [],
       activities: activities || [],
-      allDates: (allActivities || []).map((a) => a.date),
+      allActivities: allActivities || [],
       loading: false,
     });
   } catch (e) {
-    setState({ prs: [], activities: [], allDates: [], loading: false, error: "Impossible de charger tes données. Vérifie ta config Supabase." });
+    setState({ prs: [], activities: [], allActivities: [], loading: false, error: "Impossible de charger tes données. Vérifie ta config Supabase." });
   }
 }
 
@@ -911,41 +1062,75 @@ function computeCounts(dates) {
   return { week, month, year };
 }
 
-function buildYearCells(dateSet, year) {
-  const start = new Date(year, 0, 1);
-  const end = new Date(year, 11, 31);
-  const dow = (start.getDay() + 6) % 7;
-  const gridStart = new Date(start);
-  gridStart.setDate(gridStart.getDate() - dow);
+const MONTH_LABELS_SHORT = ["Jan", "Fév", "Mar", "Avr", "Mai", "Juin", "Juil", "Août", "Sep", "Oct", "Nov", "Déc"];
+const MONTH_LABELS_LONG = ["Janvier", "Février", "Mars", "Avril", "Mai", "Juin", "Juillet", "Août", "Septembre", "Octobre", "Novembre", "Décembre"];
 
-  const cells = [];
-  let d = new Date(gridStart);
-  while (d <= end) {
-    const iso = d.toISOString().slice(0, 10);
-    cells.push({ date: iso, inYear: d.getFullYear() === year, active: dateSet.has(iso) });
-    d.setDate(d.getDate() + 1);
+function computeMonthlyDistances(activities, year) {
+  const monthsKm = new Array(12).fill(0);
+  for (const a of activities) {
+    const d = new Date(a.date + "T00:00:00");
+    if (d.getFullYear() === year) {
+      monthsKm[d.getMonth()] += (a.distance_m || 0) / 1000;
+    }
   }
-  while (cells.length % 7 !== 0) {
-    const iso = d.toISOString().slice(0, 10);
-    cells.push({ date: iso, inYear: false, active: false });
-    d.setDate(d.getDate() + 1);
-  }
-  return cells;
+  return monthsKm;
 }
 
-function yearHeatmap(dates) {
-  const year = new Date().getFullYear();
-  const dateSet = new Set(dates);
-  const cells = buildYearCells(dateSet, year);
-
-  const cellsHtml = cells.map((c) => {
-    const cls = !c.inYear ? "out-of-year" : c.active ? "active" : "";
-    return `<div class="year-cell ${cls}" title="${c.date}"></div>`;
-  }).join("");
+function monthlyChart(monthsKm) {
+  const width = 600, height = 150, padTop = 16, padBottom = 22, padSide = 24;
+  const max = Math.max(...monthsKm, 1);
+  const stepX = (width - padSide * 2) / 11;
+  const points = monthsKm.map((km, i) => {
+    const x = padSide + i * stepX;
+    const y = height - padBottom - (km / max) * (height - padTop - padBottom);
+    return { x, y, km };
+  });
+  const pathD = points.map((p, i) => `${i === 0 ? "M" : "L"}${p.x.toFixed(1)},${p.y.toFixed(1)}`).join(" ");
+  const areaD = `${pathD} L${points[points.length - 1].x.toFixed(1)},${height - padBottom} L${points[0].x.toFixed(1)},${height - padBottom} Z`;
+  const dots = points.map((p) => `<circle cx="${p.x.toFixed(1)}" cy="${p.y.toFixed(1)}" r="3" fill="var(--rust)" />`).join("");
+  const labels = points.map((p, i) => `<text x="${p.x.toFixed(1)}" y="${height - 4}" text-anchor="middle" font-size="9" fill="rgba(238,241,232,0.5)" font-family="var(--font-mono)">${MONTH_LABELS_SHORT[i]}</text>`).join("");
 
   return `
-    <div class="year-heatmap-wrap">
-      <div class="year-heatmap">${cellsHtml}</div>
+    <div class="distance-chart-wrap">
+      <svg viewBox="0 0 ${width} ${height}" class="distance-chart" preserveAspectRatio="none">
+        <path d="${areaD}" fill="rgba(193,80,46,0.15)" stroke="none" />
+        <path d="${pathD}" fill="none" stroke="var(--rust)" stroke-width="2" />
+        ${dots}
+        ${labels}
+      </svg>
+    </div>
+  `;
+}
+
+function monthSelector(selectedMonth) {
+  const items = MONTH_LABELS_LONG.map((label, i) => `
+    <button class="month-chip ${i === selectedMonth ? "is-active" : ""}" data-month="${i}">${label}</button>
+  `).join("");
+  return `<div class="month-selector-scroll">${items}</div>`;
+}
+
+function monthCalendar(activities, year, month) {
+  const dateSet = new Set(activities.map((a) => a.date));
+  const first = new Date(year, month, 1);
+  const startDow = (first.getDay() + 6) % 7; // lundi = 0
+  const daysInMonth = new Date(year, month + 1, 0).getDate();
+
+  const cells = [];
+  for (let i = 0; i < startDow; i++) cells.push(null);
+  for (let day = 1; day <= daysInMonth; day++) {
+    const iso = `${year}-${String(month + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+    cells.push({ day, iso, active: dateSet.has(iso) });
+  }
+
+  const dowHtml = ["L", "M", "M", "J", "V", "S", "D"].map((d) => `<div class="cal-dow">${d}</div>`).join("");
+  const cellsHtml = cells.map((c) =>
+    c ? `<div class="cal-day ${c.active ? "is-active" : ""}" title="${c.iso}">${c.day}</div>` : `<div class="cal-day is-empty"></div>`
+  ).join("");
+
+  return `
+    <div class="month-calendar">
+      <div class="cal-grid cal-dow-row">${dowHtml}</div>
+      <div class="cal-grid">${cellsHtml}</div>
     </div>
   `;
 }
