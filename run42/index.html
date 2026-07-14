@@ -16,6 +16,7 @@
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
   <style>
+
 /* ============================================================
    Run42 — Design tokens
    Univers : piste d'athlétisme le soir, dossard de course,
@@ -388,19 +389,237 @@ button {
   * { transition: none !important; animation: none !important; }
 }
 
+  
+/* ============================================================
+   Navigation mobile — topbar + bottom nav bar
+   ============================================================ */
+
+.mobile-topbar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  padding: 18px 20px;
+  border-bottom: 1px solid rgba(91,122,90,0.25);
+  position: sticky;
+  top: 0;
+  background: var(--ink);
+  z-index: 5;
+}
+
+.mobile-title {
+  font-family: var(--font-display);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  font-size: 17px;
+}
+
+.topbar-cancel {
+  position: absolute;
+  right: 20px;
+  background: rgba(238,241,232,0.08);
+  border: none;
+  color: var(--paper);
+  font-size: 13px;
+  padding: 6px 14px;
+  border-radius: 999px;
+}
+
+.mobile-content {
+  max-width: 720px;
+  margin: 0 auto;
+  padding: 20px 20px calc(96px + env(safe-area-inset-bottom, 0px));
+}
+
+.bottom-nav {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-around;
+  background: var(--ink-soft);
+  border-top: 1px solid rgba(91,122,90,0.25);
+  padding: 8px 0 calc(8px + env(safe-area-inset-bottom, 0px));
+  z-index: 10;
+}
+
+.nav-item {
+  background: none;
+  border: none;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  color: rgba(238,241,232,0.5);
+  font-size: 10px;
+  font-family: var(--font-body);
+  padding: 4px 14px;
+}
+
+.nav-item svg { width: 22px; height: 22px; }
+.nav-item.is-active { color: var(--paper); }
+.nav-item.is-active svg { stroke: var(--rust); }
+
+.nav-add {
+  background: var(--rust);
+  width: 54px;
+  height: 54px;
+  border-radius: 50%;
+  border: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-top: -26px;
+  box-shadow: 0 4px 14px rgba(0,0,0,0.35);
+  color: var(--paper);
+}
+
+.nav-add svg { width: 26px; height: 26px; }
+.nav-add:hover { background: var(--rust-dim); }
+
+/* ============================================================
+   Onglet Activités
+   ============================================================ */
+
+.activity-list { background: var(--ink-soft); border-radius: 8px; padding: 4px 20px; }
+.activity-list .activity-row:last-child { border-bottom: none; }
+
+/* ============================================================
+   Onglet Compte
+   ============================================================ */
+
+.account-header { text-align: center; }
+
+.avatar-wrap {
+  width: 96px;
+  height: 96px;
+  border-radius: 50%;
+  margin: 0 auto 14px;
+  position: relative;
+  cursor: pointer;
+  background: var(--ink-soft);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: visible;
+  border: 2px solid var(--moss);
+}
+
+.avatar-wrap img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: 50%;
+}
+
+.avatar-initial {
+  font-family: var(--font-display);
+  font-size: 36px;
+  color: rgba(238,241,232,0.6);
+}
+
+.avatar-edit-badge {
+  position: absolute;
+  bottom: 0;
+  right: 0;
+  background: var(--rust);
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 13px;
+  border: 2px solid var(--ink);
+}
+
+.account-email {
+  color: rgba(238,241,232,0.6);
+  font-size: 13px;
+  font-family: var(--font-mono);
+}
+
+.stats-row {
+  display: flex;
+  gap: 12px;
+}
+
+.stat-box {
+  flex: 1;
+  background: var(--ink-soft);
+  border-radius: 8px;
+  padding: 16px 8px;
+  text-align: center;
+}
+
+.stat-number {
+  display: block;
+  font-family: var(--font-mono);
+  font-size: 26px;
+  font-weight: 600;
+  color: var(--paper);
+}
+
+.stat-label {
+  display: block;
+  font-size: 11px;
+  color: rgba(238,241,232,0.55);
+  margin-top: 4px;
+}
+
+.year-heatmap-wrap {
+  overflow-x: auto;
+  background: var(--ink-soft);
+  border-radius: 8px;
+  padding: 14px;
+}
+
+.year-heatmap {
+  display: grid;
+  grid-auto-flow: column;
+  grid-template-rows: repeat(7, 11px);
+  gap: 3px;
+  width: max-content;
+}
+
+.year-cell {
+  width: 11px;
+  height: 11px;
+  border-radius: 2px;
+  background: rgba(238,241,232,0.08);
+}
+
+.year-cell.active { background: var(--rust); }
+.year-cell.out-of-year { visibility: hidden; }
+
+.btn-secondary {
+  width: 100%;
+  padding: 12px 20px;
+  border: 1px solid rgba(238,241,232,0.2);
+  border-radius: 4px;
+  background: transparent;
+  color: var(--paper);
+  font-size: 14px;
+}
+
+.btn-secondary:hover { background: rgba(238,241,232,0.06); }
+
   </style>
 </head>
 <body>
   <div id="app"></div>
 
   <script type="module">
+
     // ============================================================
     // CONFIGURATION — modifie ces deux valeurs avec tes clés Supabase
     // (Settings → API dans ton projet Supabase)
     // ============================================================
     const CONFIG = {
-      SUPABASE_URL: "https://wbljbtwstcxqfqsnlusn.supabase.co",
-      SUPABASE_ANON_KEY: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6IndibGpidHdzdGN4cWZxc25sdXNuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQwMTkwNTksImV4cCI6MjA5OTU5NTA1OX0.9_iNJhGyVTl2IuXcbxsRzYHsYzp-VebOG2aohWwfogs",
+      SUPABASE_URL: "https://TON-PROJET.supabase.co",
+      SUPABASE_ANON_KEY: "TON_ANON_KEY",
     };
 
     const supabase = window.supabase.createClient(CONFIG.SUPABASE_URL, CONFIG.SUPABASE_ANON_KEY);
@@ -411,14 +630,17 @@ button {
 
 let state = {
   route: "login",       // 'login' | 'dashboard' | 'add-activity'
+  tab: "activities",    // 'activities' | 'records' | 'account'
   session: null,
   loading: false,
   prs: [],
   activities: [],
+  allDates: [],          // toutes les dates de courses (pour stats + calendrier)
   splitInputsCount: 0,
   error: null,
   info: null,
   authAction: "signin",  // 'signin' | 'signup'
+  avatarUploading: false,
 };
 
 function setState(patch) {
@@ -427,6 +649,17 @@ function setState(patch) {
 }
 
 const root = document.getElementById("app");
+
+// ============================================================
+// Icônes (SVG inline, style ligne fine cohérent avec l'identité visuelle)
+// ============================================================
+
+const ICONS = {
+  activities: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="4" y1="6" x2="20" y2="6"/><line x1="4" y1="12" x2="20" y2="12"/><line x1="4" y1="18" x2="14" y2="18"/></svg>`,
+  records: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="5"/><path d="M8.5 12.5L7 21l5-3 5 3-1.5-8.5"/></svg>`,
+  add: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>`,
+  account: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 4-6 8-6s8 2 8 6"/></svg>`,
+};
 
 // ============================================================
 // Constantes distances
@@ -465,7 +698,6 @@ async function signInPassword(email, password) {
   setState({ loading: true, error: null, info: null });
   const { error } = await supabase.auth.signInWithPassword({ email, password });
   if (error) setState({ loading: false, error: error.message });
-  // Si succès, onAuthStateChange se charge de la transition vers le dashboard
 }
 
 async function signUpPassword(email, password) {
@@ -485,24 +717,24 @@ async function signUpPassword(email, password) {
 async function checkSession() {
   const { data } = await supabase.auth.getSession();
   setState({ session: data.session, route: data.session ? "dashboard" : "login" });
-  if (data.session) loadDashboardData();
+  if (data.session) loadAppData();
 
   supabase.auth.onAuthStateChange((_event, session) => {
     setState({ session, route: session ? "dashboard" : "login" });
-    if (session) loadDashboardData();
+    if (session) loadAppData();
   });
 }
 
 async function logout() {
   await supabase.auth.signOut();
-  setState({ session: null, route: "login", prs: [], activities: [] });
+  setState({ session: null, route: "login", prs: [], activities: [], allDates: [] });
 }
 
 // ============================================================
 // Chargement des données
 // ============================================================
 
-async function loadDashboardData() {
+async function loadAppData() {
   setState({ loading: true, error: null });
   try {
     const { data: prs, error } = await supabase
@@ -515,15 +747,20 @@ async function loadDashboardData() {
       .from("activities")
       .select("*")
       .order("date", { ascending: false })
-      .limit(5);
+      .limit(30);
+
+    const { data: allActivities } = await supabase
+      .from("activities")
+      .select("date");
 
     setState({
       prs: prs || [],
       activities: activities || [],
+      allDates: (allActivities || []).map((a) => a.date),
       loading: false,
     });
   } catch (e) {
-    setState({ prs: [], activities: [], loading: false, error: "Impossible de charger tes données. Vérifie ta config Supabase." });
+    setState({ prs: [], activities: [], allDates: [], loading: false, error: "Impossible de charger tes données. Vérifie ta config Supabase." });
   }
 }
 
@@ -534,8 +771,6 @@ async function loadDashboardData() {
 function computeBestEfforts(distanceM, dureeS, kmSplits) {
   const results = [];
 
-  // 1. À partir des temps au kilomètre : meilleure fenêtre glissante
-  //    pour chaque distance "ronde" atteignable (1K, 5K, 10K, 15K, 20K)
   if (kmSplits && kmSplits.length) {
     const wholeKmTargets = [
       [1, "1K"], [5, "5K"], [10, "10K"], [15, "15K"], [20, "20K"],
@@ -552,9 +787,6 @@ function computeBestEfforts(distanceM, dureeS, kmSplits) {
     }
   }
 
-  // 2. À partir de la distance totale de la sortie : utile pour
-  //    Semi/Marathon (pas de splits ronds) ou si pas de splits saisis.
-  //    Tolérance de 3% pour matcher une distance officielle.
   for (const label of DISTANCE_ORDER) {
     const target = DISTANCE_METERS[label];
     if (Math.abs(distanceM - target) / target < 0.03) {
@@ -595,7 +827,6 @@ async function saveActivity(formData) {
 
     if (insertError) throw insertError;
 
-    // Mise à jour des PR
     const efforts = computeBestEfforts(distanceM, dureeS, kmSplits);
     for (const effort of efforts) {
       const { data: currentPR } = await supabase
@@ -616,11 +847,107 @@ async function saveActivity(formData) {
       }
     }
 
-    setState({ loading: false, route: "dashboard" });
-    loadDashboardData();
+    setState({ loading: false, route: "dashboard", tab: "activities" });
+    loadAppData();
   } catch (e) {
     setState({ loading: false, error: "Erreur lors de l'enregistrement : " + e.message });
   }
+}
+
+// ============================================================
+// Photo de profil
+// ============================================================
+
+async function uploadAvatar(file) {
+  setState({ avatarUploading: true, error: null });
+  try {
+    const userId = state.session.user.id;
+    const ext = file.name.split(".").pop();
+    const path = `${userId}/avatar.${ext}`;
+
+    const { error: uploadError } = await supabase.storage
+      .from("avatars")
+      .upload(path, file, { upsert: true });
+    if (uploadError) throw uploadError;
+
+    const { data: pub } = supabase.storage.from("avatars").getPublicUrl(path);
+    const cacheBusted = `${pub.publicUrl}?t=${Date.now()}`;
+
+    const { data: updated, error: updateError } = await supabase.auth.updateUser({
+      data: { avatar_url: cacheBusted },
+    });
+    if (updateError) throw updateError;
+
+    setState({
+      avatarUploading: false,
+      session: { ...state.session, user: updated.user },
+    });
+  } catch (e) {
+    setState({ avatarUploading: false, error: "Échec de l'upload : " + e.message });
+  }
+}
+
+// ============================================================
+// Stats & calendrier (onglet Compte)
+// ============================================================
+
+function computeCounts(dates) {
+  const now = new Date();
+  const startOfWeek = new Date(now);
+  const dow = (startOfWeek.getDay() + 6) % 7;
+  startOfWeek.setDate(startOfWeek.getDate() - dow);
+  startOfWeek.setHours(0, 0, 0, 0);
+
+  const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+  const startOfYear = new Date(now.getFullYear(), 0, 1);
+
+  let week = 0, month = 0, year = 0;
+  for (const dStr of dates) {
+    const d = new Date(dStr + "T00:00:00");
+    if (d >= startOfYear) year++;
+    if (d >= startOfMonth) month++;
+    if (d >= startOfWeek) week++;
+  }
+  return { week, month, year };
+}
+
+function buildYearCells(dateSet, year) {
+  const start = new Date(year, 0, 1);
+  const end = new Date(year, 11, 31);
+  const dow = (start.getDay() + 6) % 7;
+  const gridStart = new Date(start);
+  gridStart.setDate(gridStart.getDate() - dow);
+
+  const cells = [];
+  let d = new Date(gridStart);
+  while (d <= end) {
+    const iso = d.toISOString().slice(0, 10);
+    cells.push({ date: iso, inYear: d.getFullYear() === year, active: dateSet.has(iso) });
+    d.setDate(d.getDate() + 1);
+  }
+  while (cells.length % 7 !== 0) {
+    const iso = d.toISOString().slice(0, 10);
+    cells.push({ date: iso, inYear: false, active: false });
+    d.setDate(d.getDate() + 1);
+  }
+  return cells;
+}
+
+function yearHeatmap(dates) {
+  const year = new Date().getFullYear();
+  const dateSet = new Set(dates);
+  const cells = buildYearCells(dateSet, year);
+
+  const cellsHtml = cells.map((c) => {
+    const cls = !c.inYear ? "out-of-year" : c.active ? "active" : "";
+    return `<div class="year-cell ${cls}" title="${c.date}"></div>`;
+  }).join("");
+
+  return `
+    <div class="year-heatmap-wrap">
+      <div class="year-heatmap">${cellsHtml}</div>
+    </div>
+  `;
 }
 
 // ============================================================
@@ -686,9 +1013,12 @@ function splitLadder(prs) {
 function activityRow(a) {
   const km = (a.distance_m / 1000).toFixed(2);
   const allure = formatTemps(a.allure_moyenne) + "/km";
+  const dateFormatted = new Date(a.date + "T00:00:00").toLocaleDateString("fr-FR", {
+    day: "numeric", month: "short",
+  });
   return `
     <div class="activity-row">
-      <span class="activity-date">${a.date}</span>
+      <span class="activity-date">${dateFormatted}</span>
       <span>${km} km</span>
       <span>${formatTemps(a.duree_s)}</span>
       <span class="muted">${allure}</span>
@@ -696,43 +1026,114 @@ function activityRow(a) {
   `;
 }
 
-function viewDashboard() {
+// ---------- Onglets ----------
+
+function tabActivities() {
   return `
-    <header class="topbar">
-      <span class="brand">Run42</span>
-      <div class="topbar-actions">
-        <button class="pill pill-action" id="btn-logout">Déconnexion</button>
+    ${
+      state.loading
+        ? `<p class="muted">Chargement…</p>`
+        : state.activities.length
+        ? `<div class="activity-list">${state.activities.map(activityRow).join("")}</div>`
+        : `<p class="muted">Aucune course enregistrée pour l'instant. Appuie sur + pour ajouter ta première course.</p>`
+    }
+  `;
+}
+
+function tabRecords() {
+  return `
+    <section class="panel">
+      <h2>Tes records</h2>
+      ${state.loading ? `<p class="muted">Chargement…</p>` : splitLadder(state.prs)}
+    </section>
+
+    <section class="panel panel-split">
+      <div class="card">
+        <h3>Prédictions</h3>
+        <p class="muted">Bientôt : estimation de tes chronos sur chaque distance (Riegel + VDOT).</p>
       </div>
+      <div class="card">
+        <h3>Plan d'entraînement</h3>
+        <p class="muted">Bientôt : un programme généré selon ton niveau et ton objectif.</p>
+      </div>
+    </section>
+  `;
+}
+
+function tabAccount() {
+  const user = state.session?.user;
+  const avatarUrl = user?.user_metadata?.avatar_url;
+  const counts = computeCounts(state.allDates);
+
+  return `
+    <section class="panel account-header">
+      <div class="avatar-wrap" id="avatar-trigger">
+        ${
+          avatarUrl
+            ? `<img src="${avatarUrl}" alt="Photo de profil" />`
+            : `<span class="avatar-initial">${(user?.email || "?")[0].toUpperCase()}</span>`
+        }
+        <span class="avatar-edit-badge">${state.avatarUploading ? "…" : "✎"}</span>
+      </div>
+      <input type="file" id="f-avatar" accept="image/*" hidden />
+      <p class="account-email">${user?.email || ""}</p>
+    </section>
+
+    <section class="panel">
+      <h2>Activité</h2>
+      <div class="stats-row">
+        <div class="stat-box">
+          <span class="stat-number">${counts.week}</span>
+          <span class="stat-label">Cette semaine</span>
+        </div>
+        <div class="stat-box">
+          <span class="stat-number">${counts.month}</span>
+          <span class="stat-label">Ce mois</span>
+        </div>
+        <div class="stat-box">
+          <span class="stat-number">${counts.year}</span>
+          <span class="stat-label">Cette année</span>
+        </div>
+      </div>
+    </section>
+
+    <section class="panel">
+      <h2>${new Date().getFullYear()}</h2>
+      ${yearHeatmap(state.allDates)}
+    </section>
+
+    <section class="panel">
+      <button class="btn-secondary" id="btn-logout">Déconnexion</button>
+    </section>
+  `;
+}
+
+const TAB_TITLES = { activities: "Activités", records: "Records", account: "Mon compte" };
+const TAB_RENDERERS = { activities: tabActivities, records: tabRecords, account: tabAccount };
+
+function viewShell() {
+  const navItem = (tab, icon) => `
+    <button class="nav-item ${state.tab === tab ? "is-active" : ""}" data-tab="${tab}">
+      ${icon}
+      <span>${TAB_TITLES[tab]}</span>
+    </button>
+  `;
+
+  return `
+    <header class="mobile-topbar">
+      <span class="mobile-title">${TAB_TITLES[state.tab]}</span>
     </header>
 
-    <main class="dashboard">
-      <button class="btn-primary btn-add" id="btn-add-activity">+ Ajouter une course</button>
-
-      <section class="panel">
-        <h2>Tes records</h2>
-        ${state.loading ? `<p class="muted">Chargement…</p>` : splitLadder(state.prs)}
-      </section>
-
-      <section class="panel">
-        <h2>Dernières courses</h2>
-        ${
-          state.activities.length
-            ? state.activities.map(activityRow).join("")
-            : `<p class="muted">Aucune course enregistrée pour l'instant.</p>`
-        }
-      </section>
-
-      <section class="panel panel-split">
-        <div class="card">
-          <h3>Prédictions</h3>
-          <p class="muted">Bientôt : estimation de tes chronos sur chaque distance (Riegel + VDOT).</p>
-        </div>
-        <div class="card">
-          <h3>Plan d'entraînement</h3>
-          <p class="muted">Bientôt : un programme généré selon ton niveau et ton objectif.</p>
-        </div>
-      </section>
+    <main class="mobile-content">
+      ${TAB_RENDERERS[state.tab]()}
     </main>
+
+    <nav class="bottom-nav">
+      ${navItem("activities", ICONS.activities)}
+      ${navItem("records", ICONS.records)}
+      <button class="nav-add" id="btn-add-activity">${ICONS.add}</button>
+      ${navItem("account", ICONS.account)}
+    </nav>
   `;
 }
 
@@ -745,14 +1146,13 @@ function viewAddActivity() {
   `).join("");
 
   return `
-    <header class="topbar">
-      <span class="brand">Run42</span>
-      <button class="pill pill-action" id="btn-cancel">Annuler</button>
+    <header class="mobile-topbar">
+      <span class="mobile-title">Nouvelle course</span>
+      <button class="topbar-cancel" id="btn-cancel">Annuler</button>
     </header>
 
-    <main class="dashboard">
+    <main class="mobile-content">
       <section class="panel">
-        <h2>Nouvelle course</h2>
         ${state.error ? `<p class="error-msg">${state.error}</p>` : ""}
 
         <form id="activity-form" class="activity-form">
@@ -791,7 +1191,7 @@ function viewAddActivity() {
 // ============================================================
 
 function render() {
-  if (state.route === "dashboard") root.innerHTML = viewDashboard();
+  if (state.route === "dashboard") root.innerHTML = viewShell();
   else if (state.route === "add-activity") root.innerHTML = viewAddActivity();
   else root.innerHTML = viewLogin();
 
@@ -825,11 +1225,24 @@ function attachHandlers() {
   const logoutBtn = document.getElementById("btn-logout");
   if (logoutBtn) logoutBtn.addEventListener("click", logout);
 
+  document.querySelectorAll(".nav-item").forEach((btn) => {
+    btn.addEventListener("click", () => setState({ tab: btn.dataset.tab, error: null }));
+  });
+
   const addBtn = document.getElementById("btn-add-activity");
   if (addBtn) addBtn.addEventListener("click", () => setState({ route: "add-activity", error: null }));
 
   const cancelBtn = document.getElementById("btn-cancel");
   if (cancelBtn) cancelBtn.addEventListener("click", () => setState({ route: "dashboard", error: null }));
+
+  const avatarTrigger = document.getElementById("avatar-trigger");
+  const avatarInput = document.getElementById("f-avatar");
+  if (avatarTrigger && avatarInput) {
+    avatarTrigger.addEventListener("click", () => avatarInput.click());
+    avatarInput.addEventListener("change", () => {
+      if (avatarInput.files[0]) uploadAvatar(avatarInput.files[0]);
+    });
+  }
 
   const distanceInput = document.getElementById("f-distance");
   if (distanceInput) {
@@ -865,6 +1278,8 @@ function attachHandlers() {
 }
 
 checkSession();
+
+  
 
   </script>
 
