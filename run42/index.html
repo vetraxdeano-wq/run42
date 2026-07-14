@@ -1352,8 +1352,12 @@ function tabAccount() {
     </section>
 
     <section class="panel">
-      <h2>${new Date().getFullYear()}</h2>
-      ${yearHeatmap(state.allActivities.map((a) => a.date))}
+      <h2>${MONTH_LABELS_LONG[new Date().getMonth()]} ${new Date().getFullYear()}</h2>
+      ${monthlyChart(computeMonthlyDistances(state.allActivities, new Date().getFullYear()))}
+    </section>
+
+    <section class="panel">
+      ${monthCalendar(state.allActivities, new Date().getFullYear(), new Date().getMonth())}
     </section>
 
     <section class="panel">
