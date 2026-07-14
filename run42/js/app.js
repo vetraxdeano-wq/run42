@@ -14,6 +14,8 @@ let state = {
   splitInputsCount: 0,
   error: null,
   info: null,
+  authMode: "magic",     // 'magic' | 'password'
+  authAction: "signin",  // 'signin' | 'signup' (mode password uniquement)
 };
 
 function setState(patch) {
@@ -52,16 +54,8 @@ function parseDuree(str) {
   return null;
 }
 
-const DEMO_PRS = [
-  { distance_label: "1K", meilleur_temps_s: 210 },
-  { distance_label: "5K", meilleur_temps_s: 1145 },
-  { distance_label: "10K", meilleur_temps_s: 2430 },
-  { distance_label: "Semi", meilleur_temps_s: 5580 },
-  { distance_label: "Marathon", meilleur_temps_s: null },
-];
-
 // ============================================================
-// Auth — email magic link (pas de mot de passe à gérer)
+// Auth — magic link OU email + mot de passe, au choix
 // ============================================================
 
 async function sendMagicLink(email) {
@@ -71,6 +65,27 @@ async function sendMagicLink(email) {
     setState({ loading: false, error: error.message });
   } else {
     setState({ loading: false, info: "Lien envoyé ! Vérifie ta boîte mail." });
+  }
+}
+
+async function signInPassword(email, password) {
+  setState({ loading: true, error: null, info: null });
+  const { error } = await supabase.auth.signInWithPassword({ email, password });
+  if (error) setState({ loading: false, error: error.message });
+  // Si succès, onAuthStateChange se charge de la transition vers le dashboard
+}
+
+async function signUpPassword(email, password) {
+  setState({ loading: true, error: null, info: null });
+  const { error } = await supabase.auth.signUp({ email, password });
+  if (error) {
+    setState({ loading: false, error: error.message });
+  } else {
+    setState({
+      loading: false,
+      info: "Compte créé ! Vérifie ta boîte mail pour confirmer, puis connecte-toi.",
+      authAction: "signin",
+    });
   }
 }
 
@@ -110,12 +125,12 @@ async function loadDashboardData() {
       .limit(5);
 
     setState({
-      prs: prs && prs.length ? prs : DEMO_PRS,
+      prs: prs || [],
       activities: activities || [],
       loading: false,
     });
   } catch (e) {
-    setState({ prs: DEMO_PRS, loading: false });
+    setState({ prs: [], activities: [], loading: false, error: "Impossible de charger tes données. Vérifie ta config Supabase." });
   }
 }
 
@@ -220,6 +235,9 @@ async function saveActivity(formData) {
 // ============================================================
 
 function viewLogin() {
+  const isPasswordMode = state.authMode === "password";
+  const isSignup = state.authAction === "signup";
+
   return `
     <section class="login-screen">
       <div class="login-card">
@@ -227,22 +245,49 @@ function viewLogin() {
         <h1>Run42</h1>
         <p class="tagline">Tes stats de course, tes records, tes prédictions — sans compte payant.</p>
 
+        <div class="auth-tabs">
+          <button class="auth-tab ${!isPasswordMode ? "is-active" : ""}" data-mode="magic">Lien magique</button>
+          <button class="auth-tab ${isPasswordMode ? "is-active" : ""}" data-mode="password">Email + mot de passe</button>
+        </div>
+
         ${state.info ? `<p class="info-msg">${state.info}</p>` : ""}
         ${state.error ? `<p class="error-msg">${state.error}</p>` : ""}
 
-        <form id="login-form">
-          <input type="email" id="login-email" placeholder="ton@email.com" required />
-          <button type="submit" class="btn-primary" ${state.loading ? "disabled" : ""}>
-            ${state.loading ? "Envoi…" : "Recevoir un lien de connexion"}
-          </button>
-        </form>
-        <p class="fine-print">Pas de mot de passe : tu reçois un lien magique par email.</p>
+        ${
+          isPasswordMode
+            ? `
+          <form id="password-form">
+            <input type="email" id="pw-email" placeholder="ton@email.com" required />
+            <input type="password" id="pw-password" placeholder="Mot de passe" minlength="6" required />
+            <button type="submit" class="btn-primary" ${state.loading ? "disabled" : ""}>
+              ${state.loading ? "…" : isSignup ? "Créer mon compte" : "Se connecter"}
+            </button>
+          </form>
+          <p class="fine-print">
+            ${isSignup ? "Déjà un compte ?" : "Pas encore de compte ?"}
+            <a href="#" id="toggle-auth-action">${isSignup ? "Se connecter" : "Créer un compte"}</a>
+          </p>
+        `
+            : `
+          <form id="login-form">
+            <input type="email" id="login-email" placeholder="ton@email.com" required />
+            <button type="submit" class="btn-primary" ${state.loading ? "disabled" : ""}>
+              ${state.loading ? "Envoi…" : "Recevoir un lien de connexion"}
+            </button>
+          </form>
+          <p class="fine-print">Pas de mot de passe : tu reçois un lien magique par email.</p>
+        `
+        }
       </div>
     </section>
   `;
 }
 
 function splitLadder(prs) {
+  if (!prs.length) {
+    return `<p class="muted">Aucune course enregistrée pour l'instant. Ajoute ta première course pour voir apparaître tes records.</p>`;
+  }
+
   const withTime = prs.filter((p) => p.meilleur_temps_s);
   const maxSec = withTime.length ? Math.max(...withTime.map((p) => p.meilleur_temps_s)) : 1;
 
@@ -386,6 +431,35 @@ function attachHandlers() {
     loginForm.addEventListener("submit", (e) => {
       e.preventDefault();
       sendMagicLink(document.getElementById("login-email").value);
+    });
+  }
+
+  const passwordForm = document.getElementById("password-form");
+  if (passwordForm) {
+    passwordForm.addEventListener("submit", (e) => {
+      e.preventDefault();
+      const email = document.getElementById("pw-email").value;
+      const password = document.getElementById("pw-password").value;
+      if (state.authAction === "signup") signUpPassword(email, password);
+      else signInPassword(email, password);
+    });
+  }
+
+  document.querySelectorAll(".auth-tab").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      setState({ authMode: btn.dataset.mode, error: null, info: null });
+    });
+  });
+
+  const toggleAction = document.getElementById("toggle-auth-action");
+  if (toggleAction) {
+    toggleAction.addEventListener("click", (e) => {
+      e.preventDefault();
+      setState({
+        authAction: state.authAction === "signup" ? "signin" : "signup",
+        error: null,
+        info: null,
+      });
     });
   }
 
