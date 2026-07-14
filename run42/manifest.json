@@ -1,0 +1,25 @@
+{
+  "name": "Run42",
+  "short_name": "Run42",
+  "description": "Tes courses Strava, analysées à fond : records, prédictions, plans d'entraînement.",
+  "start_url": "/index.html",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#14231c",
+  "theme_color": "#14231c",
+  "orientation": "portrait",
+  "icons": [
+    {
+      "src": "icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}
