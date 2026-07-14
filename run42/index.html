@@ -1248,7 +1248,7 @@ function tabRecords() {
 function tabAccount() {
   const user = state.session?.user;
   const avatarUrl = user?.user_metadata?.avatar_url;
-  const counts = computeCounts(state.allDates);
+  const counts = computeCounts(state.allActivities.map((a) => a.date));
 
   return `
     <section class="panel account-header">
@@ -1284,7 +1284,7 @@ function tabAccount() {
 
     <section class="panel">
       <h2>${new Date().getFullYear()}</h2>
-      ${yearHeatmap(state.allDates)}
+      ${yearHeatmap(state.allActivities.map((a) => a.date))}
     </section>
 
     <section class="panel">
