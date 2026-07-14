@@ -228,6 +228,33 @@ button {
   .login-card h1 { font-size: 34px; }
 }
 
+.auth-tabs {
+  display: flex;
+  gap: 4px;
+  margin-bottom: 20px;
+  background: var(--ink-soft);
+  border-radius: 6px;
+  padding: 4px;
+}
+
+.auth-tab {
+  flex: 1;
+  padding: 9px 10px;
+  border: none;
+  background: transparent;
+  color: rgba(238,241,232,0.55);
+  font-size: 13px;
+  border-radius: 4px;
+  font-family: var(--font-body);
+}
+
+.auth-tab.is-active {
+  background: var(--rust);
+  color: var(--paper);
+}
+
+.fine-print a { color: var(--moss); text-decoration: underline; }
+
 /* ---------- Login form ---------- */
 
 #login-form {
@@ -237,13 +264,21 @@ button {
   margin-bottom: 8px;
 }
 
-#login-form input[type="email"] {
+#login-form input[type="email"],
+#password-form input {
   padding: 12px 14px;
   border-radius: 4px;
   border: 1px solid rgba(238,241,232,0.2);
   background: var(--ink-soft);
   color: var(--paper);
   font-size: 15px;
+}
+
+#password-form {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-bottom: 8px;
 }
 
 .btn-primary {
