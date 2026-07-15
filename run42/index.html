@@ -244,6 +244,50 @@ button {
   gap: 16px;
 }
 
+.goal-card {
+  background: var(--ink-soft);
+  border: 1px solid rgba(139,195,74,0.12);
+  border-radius: 14px;
+  padding: 16px 18px;
+  box-shadow: 0 6px 18px -10px rgba(0,0,0,0.5);
+}
+.goal-card.is-reached {
+  border-color: rgba(182,217,40,0.5);
+  box-shadow: 0 0 0 1px rgba(182,217,40,0.2), 0 6px 18px -10px rgba(0,0,0,0.5);
+}
+
+.goal-progress-track {
+  height: 14px;
+  background: rgba(238,241,232,0.08);
+  border-radius: 999px;
+  overflow: hidden;
+}
+.goal-progress-bar {
+  height: 100%;
+  background: var(--gradient-accent);
+  border-radius: 999px;
+  transition: width 0.4s ease;
+}
+
+.goal-progress-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 10px;
+  gap: 10px;
+}
+.goal-progress-current {
+  font-family: var(--font-mono);
+  font-size: 15px;
+  font-weight: 600;
+}
+.goal-progress-days {
+  font-family: var(--font-body);
+  font-size: 12.5px;
+  color: rgba(238,241,232,0.6);
+}
+.goal-card.is-reached .goal-progress-days { color: var(--signal); }
+
 .card {
   background: var(--ink-soft);
   border: 1px solid rgba(139,195,74,0.12);
@@ -1439,6 +1483,8 @@ let state = {
   badgeModal: null,        // { type: 'distance'|'duration', index } | null
   badgeModalSort: "desc",  // 'desc' | 'asc' — tri des dates d'obtention
   recordsModal: null,      // distance_label affiché dans la modale de classement des perfs, ou null
+  goalEditing: false,      // formulaire d'objectif ouvert (création ou modification)
+  goalSaving: false,
   notifications: [],       // toasts de nouveaux paliers/badges débloqués
   activityDetailId: null,  // id de l'activité affichée dans la modale de détail
   editingActivityId: null, // id de l'activité en cours de modification (formulaire add-activity réutilisé)
@@ -1937,6 +1983,72 @@ async function saveProfil(profil) {
   } catch (e) {
     setState({ profilSaving: false, error: "Échec de l'enregistrement du profil : " + e.message });
   }
+}
+
+// ============================================================
+// Objectif (hebdomadaire / mensuel) — module de motivation
+// ============================================================
+// Stocké dans user_metadata comme le profil : { mode: "hebdo"|"mensuel",
+// metric: "distance"|"duree", target: number } — target est en km pour une
+// distance, en minutes pour une durée (unités plus naturelles à saisir).
+
+function getGoal() {
+  return state.session?.user?.user_metadata?.goal || null;
+}
+
+async function saveGoal(goal) {
+  setState({ goalSaving: true, error: null });
+  try {
+    const { data: updated, error } = await supabase.auth.updateUser({
+      data: { goal },
+    });
+    if (error) throw error;
+    setState({
+      goalSaving: false,
+      goalEditing: false,
+      session: { ...state.session, user: updated.user },
+    });
+  } catch (e) {
+    setState({ goalSaving: false, error: "Échec de l'enregistrement de l'objectif : " + e.message });
+  }
+}
+
+// Calcule où on en est sur la période en cours (semaine ou mois glissant
+// calendaire) par rapport à l'objectif fixé, à partir des activités déjà
+// enregistrées — pas besoin de stocker de progression séparément, elle se
+// déduit toujours des activités réelles.
+function computeGoalProgress(goal, activities) {
+  if (!goal) return null;
+  const now = new Date();
+  let periodStart, periodEnd;
+
+  if (goal.mode === "hebdo") {
+    const start = new Date(now);
+    const dow = (start.getDay() + 6) % 7;
+    start.setDate(start.getDate() - dow);
+    start.setHours(0, 0, 0, 0);
+    const end = new Date(start);
+    end.setDate(end.getDate() + 7);
+    periodStart = start;
+    periodEnd = end;
+  } else {
+    periodStart = new Date(now.getFullYear(), now.getMonth(), 1);
+    periodEnd = new Date(now.getFullYear(), now.getMonth() + 1, 1);
+  }
+
+  let current = 0;
+  for (const a of activities || []) {
+    const d = new Date(a.date + "T00:00:00");
+    if (d >= periodStart && d < periodEnd) {
+      current += goal.metric === "distance" ? (a.distance_m || 0) : (a.duree_s || 0);
+    }
+  }
+
+  const target = goal.metric === "distance" ? goal.target * 1000 : goal.target * 60;
+  const pct = target > 0 ? Math.min(100, (current / target) * 100) : 0;
+  const daysLeft = Math.max(0, Math.ceil((periodEnd - now) / 86400000));
+
+  return { current, target, pct, daysLeft, reached: current >= target };
 }
 
 // ============================================================
@@ -3166,6 +3278,8 @@ function tabAccount() {
       </div>
     </section>
 
+    ${goalPanel()}
+
     ${streakPanel(streak)}
 
     <section class="panel">
@@ -3216,6 +3330,77 @@ function tabAccount() {
     ${accountSubnav()}
 
     ${state.accountView === "badges" ? badgesSection() : apercuHtml}
+  `;
+}
+
+function goalPanel() {
+  const goal = getGoal();
+  const editing = state.goalEditing || !goal;
+
+  if (editing) {
+    return `
+      <section class="panel">
+        <div class="panel-header-row">
+          <h2>Objectif</h2>
+          ${goal ? `<button class="btn-chip" id="btn-cancel-goal">Annuler</button>` : ""}
+        </div>
+        ${goalForm(goal)}
+      </section>
+    `;
+  }
+
+  const progress = computeGoalProgress(goal, state.allActivities);
+  const currentLabel = goal.metric === "distance" ? formatDistanceKm(progress.current) : formatTemps(progress.current);
+  const targetLabel = goal.metric === "distance" ? formatDistanceKm(progress.target) : formatTemps(progress.target);
+  const modeLabel = goal.mode === "hebdo" ? "hebdomadaire" : "mensuel";
+
+  return `
+    <section class="panel">
+      <div class="panel-header-row">
+        <h2>Objectif ${modeLabel}</h2>
+        <button class="btn-chip" id="btn-edit-goal">Modifier</button>
+      </div>
+      <div class="goal-card ${progress.reached ? "is-reached" : ""}">
+        <div class="goal-progress-track">
+          <div class="goal-progress-bar" style="width:${progress.pct}%"></div>
+        </div>
+        <div class="goal-progress-row">
+          <span class="goal-progress-current">${currentLabel} / ${targetLabel}</span>
+          <span class="goal-progress-days">
+            ${progress.reached ? "Objectif atteint 🎉" : `${progress.daysLeft} jour${progress.daysLeft > 1 ? "s" : ""} restant${progress.daysLeft > 1 ? "s" : ""}`}
+          </span>
+        </div>
+      </div>
+    </section>
+  `;
+}
+
+function goalForm(goal) {
+  const metric = goal?.metric || "distance";
+  return `
+    <form id="goal-form" class="activity-form">
+      <p class="muted">Fixe-toi un objectif de distance ou de durée sur la semaine ou le mois, et suis ta progression au fil de tes activités.</p>
+      <label>Fréquence
+        <select id="f-goal-mode" required>
+          <option value="hebdo" ${goal?.mode === "hebdo" ? "selected" : ""}>Hebdomadaire</option>
+          <option value="mensuel" ${goal?.mode === "mensuel" ? "selected" : ""}>Mensuel</option>
+        </select>
+      </label>
+      <label>Type d'objectif
+        <select id="f-goal-metric" required>
+          <option value="distance" ${metric === "distance" ? "selected" : ""}>Distance</option>
+          <option value="duree" ${metric === "duree" ? "selected" : ""}>Durée</option>
+        </select>
+      </label>
+      <label id="f-goal-target-label">
+        ${metric === "duree" ? "Durée cible (minutes)" : "Distance cible (km)"}
+        <input type="number" id="f-goal-target" min="0.1" step="0.1" value="${goal?.target ?? ""}" required />
+      </label>
+      <button type="submit" class="btn-primary" ${state.goalSaving ? "disabled" : ""}>
+        ${state.goalSaving ? "Enregistrement…" : "Enregistrer mon objectif"}
+      </button>
+      ${goal ? `<button type="button" class="btn-secondary" id="btn-delete-goal">Supprimer l'objectif</button>` : ""}
+    </form>
   `;
 }
 
@@ -3532,6 +3717,45 @@ function attachHandlers() {
     gotoAccountProfilBtn.addEventListener("click", () =>
       setState({ tab: "account", profilEditing: true, error: null })
     );
+  }
+
+  const editGoalBtn = document.getElementById("btn-edit-goal");
+  if (editGoalBtn) editGoalBtn.addEventListener("click", () => setState({ goalEditing: true, error: null }));
+
+  const cancelGoalBtn = document.getElementById("btn-cancel-goal");
+  if (cancelGoalBtn) cancelGoalBtn.addEventListener("click", () => setState({ goalEditing: false, error: null }));
+
+  const deleteGoalBtn = document.getElementById("btn-delete-goal");
+  if (deleteGoalBtn) {
+    deleteGoalBtn.addEventListener("click", () => {
+      if (window.confirm("Supprimer ton objectif ?")) saveGoal(null);
+    });
+  }
+
+  const goalMetricSelect = document.getElementById("f-goal-metric");
+  const goalTargetLabel = document.getElementById("f-goal-target-label");
+  if (goalMetricSelect && goalTargetLabel) {
+    goalMetricSelect.addEventListener("change", () => {
+      goalTargetLabel.firstChild.textContent =
+        goalMetricSelect.value === "duree" ? "Durée cible (minutes)" : "Distance cible (km)";
+    });
+  }
+
+  const goalFormEl = document.getElementById("goal-form");
+  if (goalFormEl) {
+    goalFormEl.addEventListener("submit", (e) => {
+      e.preventDefault();
+      const target = parseFloat(document.getElementById("f-goal-target").value);
+      if (!target || target <= 0) {
+        setState({ error: "Indique une valeur d'objectif valide." });
+        return;
+      }
+      saveGoal({
+        mode: document.getElementById("f-goal-mode").value,
+        metric: document.getElementById("f-goal-metric").value,
+        target,
+      });
+    });
   }
 
   document.querySelectorAll(".activity-delete-btn").forEach((btn) => {
