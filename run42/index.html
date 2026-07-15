@@ -325,15 +325,24 @@ button {
 
 /* ---------- Activity list ---------- */
 
+.activity-row-wrap { border-bottom: 1px solid rgba(91,122,90,0.15); }
+.activity-list .activity-row-wrap:last-child { border-bottom: none; }
+
 .activity-row {
   display: grid;
   grid-template-columns: 90px 1fr 90px 90px 30px;
   align-items: center;
   gap: 12px;
   padding: 10px 0;
-  border-bottom: 1px solid rgba(91,122,90,0.15);
   font-family: var(--font-mono);
   font-size: 14px;
+}
+
+.activity-pr-badge {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--signal);
+  padding: 0 0 10px 2px;
 }
 
 .activity-date { color: rgba(238,241,232,0.6); }
@@ -498,7 +507,6 @@ button {
    ============================================================ */
 
 .activity-list { background: var(--ink-soft); border-radius: 8px; padding: 4px 20px; }
-.activity-list .activity-row:last-child { border-bottom: none; }
 
 /* ============================================================
    Onglet Compte
@@ -1484,6 +1492,25 @@ async function saveActivity(formData) {
     const kmSplits = formData.kmSplits.filter((s) => s != null);
     const allureMoyenne = dureeS / (distanceM / 1000);
 
+    // On détermine AVANT l'insertion quels efforts constituent un nouveau record.
+    // C'est ce qui permet de figer le résultat (pr_labels) sur l'activité :
+    // même si un record plus récent écrase ensuite personal_records, l'activité
+    // gardera la trace qu'elle était un PR au moment où elle a été enregistrée.
+    const efforts = computeBestEfforts(distanceM, dureeS, kmSplits);
+    const prChecks = [];
+    for (const effort of efforts) {
+      const { data: currentPR } = await supabase
+        .from("personal_records")
+        .select("meilleur_temps_s")
+        .eq("user_id", userId)
+        .eq("distance_label", effort.distance_label)
+        .maybeSingle();
+
+      const isNewPR = !currentPR || effort.temps_s < currentPR.meilleur_temps_s;
+      prChecks.push({ ...effort, isNewPR });
+    }
+    const prLabels = prChecks.filter((p) => p.isNewPR).map((p) => p.distance_label);
+
     const { data: activity, error: insertError } = await supabase
       .from("activities")
       .insert({
@@ -1495,26 +1522,19 @@ async function saveActivity(formData) {
         allure_moyenne: allureMoyenne,
         km_splits: kmSplits.length ? kmSplits : null,
         source: "manuel",
+        pr_labels: prLabels.length ? prLabels : null,
       })
       .select()
       .single();
 
     if (insertError) throw insertError;
 
-    const efforts = computeBestEfforts(distanceM, dureeS, kmSplits);
-    for (const effort of efforts) {
-      const { data: currentPR } = await supabase
-        .from("personal_records")
-        .select("meilleur_temps_s")
-        .eq("user_id", userId)
-        .eq("distance_label", effort.distance_label)
-        .maybeSingle();
-
-      if (!currentPR || effort.temps_s < currentPR.meilleur_temps_s) {
+    for (const p of prChecks) {
+      if (p.isNewPR) {
         await supabase.from("personal_records").upsert({
           user_id: userId,
-          distance_label: effort.distance_label,
-          meilleur_temps_s: effort.temps_s,
+          distance_label: p.distance_label,
+          meilleur_temps_s: p.temps_s,
           activity_id: activity.id,
           date_obtenu: formData.date,
         });
@@ -1524,7 +1544,15 @@ async function saveActivity(formData) {
     const activitiesBefore = state.allActivities;
     await loadAppData();
     const unlocks = detectBadgeUnlocks(activitiesBefore, state.allActivities);
-    const newNotifications = unlocks.map((u) => ({ id: `${Date.now()}-${Math.random()}`, ...u }));
+    const prNotifications = prLabels.map((label) => ({
+      id: `${Date.now()}-${Math.random()}`,
+      icon: "🏆",
+      text: `Nouveau record personnel : <strong>${label}</strong> !`,
+    }));
+    const newNotifications = [
+      ...prNotifications,
+      ...unlocks.map((u) => ({ id: `${Date.now()}-${Math.random()}`, ...u })),
+    ];
 
     setState({
       loading: false,
@@ -2169,13 +2197,22 @@ function activityRow(a) {
   const dateFormatted = new Date(a.date + "T00:00:00").toLocaleDateString("fr-FR", {
     day: "numeric", month: "short",
   });
+  // pr_labels est figé au moment de l'enregistrement de la course : ce badge
+  // reste affiché même si un record plus récent a depuis écrasé celui-ci
+  // dans personal_records.
+  const prBadge = a.pr_labels && a.pr_labels.length
+    ? `<div class="activity-pr-badge">🏆 Record personnel — ${a.pr_labels.join(", ")}</div>`
+    : "";
   return `
-    <div class="activity-row">
-      <span class="activity-date">${dateFormatted}</span>
-      <span>${km} km</span>
-      <span>${formatTemps(a.duree_s)}</span>
-      <span class="muted">${allure}</span>
-      <button class="activity-delete-btn" data-id="${a.id}" aria-label="Supprimer cette course" title="Supprimer">${ICONS.trash}</button>
+    <div class="activity-row-wrap">
+      <div class="activity-row">
+        <span class="activity-date">${dateFormatted}</span>
+        <span>${km} km</span>
+        <span>${formatTemps(a.duree_s)}</span>
+        <span class="muted">${allure}</span>
+        <button class="activity-delete-btn" data-id="${a.id}" aria-label="Supprimer cette course" title="Supprimer">${ICONS.trash}</button>
+      </div>
+      ${prBadge}
     </div>
   `;
 }
@@ -2588,11 +2625,28 @@ function viewAddActivity() {
 // Router / render
 // ============================================================
 
-function render() {
-  if (state.route === "dashboard") root.innerHTML = viewShell();
-  else if (state.route === "add-activity") root.innerHTML = viewAddActivity();
-  else root.innerHTML = viewLogin();
+function viewToasts() {
+  if (!state.notifications.length) return "";
+  return `
+    <div class="toast-stack">
+      ${state.notifications.map((n) => `
+        <div class="toast">
+          <span class="toast-icon">${n.icon}</span>
+          <span class="toast-text">${n.text}</span>
+          <button class="toast-close" data-id="${n.id}" aria-label="Fermer la notification">✕</button>
+        </div>
+      `).join("")}
+    </div>
+  `;
+}
 
+function render() {
+  let html;
+  if (state.route === "dashboard") html = viewShell();
+  else if (state.route === "add-activity") html = viewAddActivity();
+  else html = viewLogin();
+
+  root.innerHTML = html + viewToasts();
   attachHandlers();
 }
 
@@ -2751,12 +2805,30 @@ function attachHandlers() {
   }
 
   const distanceInput = document.getElementById("f-distance");
-  if (distanceInput) {
-    distanceInput.addEventListener("change", () => {
+  const splitsGrid = document.querySelector(".splits-grid");
+  if (distanceInput && splitsGrid) {
+    distanceInput.addEventListener("input", () => {
       const km = Math.floor(parseFloat(distanceInput.value) || 0);
-      setState({ splitInputsCount: Math.min(km, 50) });
+      const count = Math.min(km, 50);
+      // On met à jour l'état sans déclencher render() : un render() complet ici
+      // reconstruirait le formulaire et effacerait ce que l'utilisateur vient de
+      // taper dans le champ distance (et les autres champs du formulaire).
+      state.splitInputsCount = count;
+      splitsGrid.innerHTML = Array.from({ length: count }, (_, i) => `
+        <label class="split-input-label">
+          Km ${i + 1}
+          <input type="text" class="km-split-input" data-index="${i}" placeholder="mm:ss" />
+        </label>
+      `).join("");
     });
   }
+
+  document.querySelectorAll(".toast-close").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const id = btn.dataset.id;
+      setState({ notifications: state.notifications.filter((n) => n.id !== id) });
+    });
+  });
 
   const activityForm = document.getElementById("activity-form");
   if (activityForm) {
