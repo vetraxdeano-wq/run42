@@ -1804,14 +1804,97 @@ async function saveProfil(profil) {
 async function deleteActivity(activityId) {
   setState({ loading: true, error: null });
   try {
-    const { error } = await supabase
+    const userId = state.session.user.id;
+
+    // Avant de supprimer l'activité, on repère les PR qui sont actuellement
+    // basés dessus : ce sont les seuls qu'il faudra recalculer / retirer.
+    // (Les badges, eux, sont recalculés à la volée à partir du nombre/de la
+    // distance/de la durée des activités restantes : rien à faire côté
+    // badges, ils se re-verrouillent automatiquement si le seuil n'est plus atteint.)
+    const { data: linkedPRs } = await supabase
+      .from("personal_records")
+      .select("distance_label")
+      .eq("user_id", userId)
+      .eq("activity_id", activityId);
+    const affectedLabels = (linkedPRs || []).map((p) => p.distance_label);
+
+    const { data, error } = await supabase
       .from("activities")
       .delete()
-      .eq("id", activityId);
+      .eq("id", activityId)
+      .eq("user_id", userId)
+      .select();
     if (error) throw error;
-    loadAppData();
+
+    // Si aucune ligne n'a été renvoyée, la suppression n'a en réalité rien
+    // supprimé (le plus souvent parce qu'aucune policy RLS "DELETE" n'existe
+    // sur la table "activities" dans Supabase, ou qu'elle ne correspond pas
+    // à cette ligne) : Supabase ne remonte alors pas d'erreur, ce qui donnait
+    // l'impression trompeuse que la suppression fonctionnait alors que la
+    // course reste en base et réapparaît après rechargement.
+    if (!data || data.length === 0) {
+      throw new Error(
+        "Aucune ligne supprimée. Vérifie qu'une policy RLS \"DELETE\" existe sur la table activities dans Supabase (autorisant user_id = auth.uid())."
+      );
+    }
+
+    // L'activité qui détenait ces records n'existe plus : on recalcule le
+    // meilleur temps parmi les activités restantes plutôt que d'effacer
+    // purement et simplement le PR (qui pourrait masquer une 2e meilleure
+    // perf tout à fait valide).
+    if (affectedLabels.length) {
+      await recomputeAffectedPRs(userId, affectedLabels);
+    }
+
+    await loadAppData();
   } catch (e) {
     setState({ loading: false, error: "Échec de la suppression : " + e.message });
+  }
+}
+
+// Recalcule, pour chaque distance_label listé, le meilleur temps parmi
+// TOUTES les activités restantes de l'utilisateur (courses entières qui
+// matchent la distance à ±3%, ou meilleurs enchaînements de km_splits pour
+// les distances rondes 1K/5K/10K/15K/20K). Si aucune activité ne peut plus
+// justifier le label, le PR est retiré ; sinon il est mis à jour vers la
+// nouvelle meilleure performance (avec sa propre activity_id/date).
+async function recomputeAffectedPRs(userId, affectedLabels) {
+  const { data: allActs } = await supabase
+    .from("activities")
+    .select("id, date, distance_m, duree_s, km_splits")
+    .eq("user_id", userId);
+
+  const bestByLabel = {};
+  for (const a of allActs || []) {
+    const efforts = computeBestEfforts(a.distance_m, a.duree_s, a.km_splits);
+    for (const eff of efforts) {
+      if (!affectedLabels.includes(eff.distance_label)) continue;
+      const current = bestByLabel[eff.distance_label];
+      if (!current || eff.temps_s < current.temps_s) {
+        bestByLabel[eff.distance_label] = { temps_s: eff.temps_s, activity_id: a.id, date: a.date };
+      }
+    }
+  }
+
+  for (const label of affectedLabels) {
+    const best = bestByLabel[label];
+    if (best) {
+      await supabase.from("personal_records").upsert({
+        user_id: userId,
+        distance_label: label,
+        meilleur_temps_s: best.temps_s,
+        activity_id: best.activity_id,
+        date_obtenu: best.date,
+      });
+    } else {
+      // Plus aucune activité ne couvre cette distance : le PR n'a plus
+      // aucune preuve derrière lui, on le retire.
+      await supabase
+        .from("personal_records")
+        .delete()
+        .eq("user_id", userId)
+        .eq("distance_label", label);
+    }
   }
 }
 
@@ -1825,6 +1908,7 @@ async function deleteActivity(activityId) {
 async function updateActivity(activityId, formData) {
   setState({ loading: true, error: null });
   try {
+    const userId = state.session.user.id;
     const distanceM = Math.round(formData.distanceKm * 1000);
     const dureeS = formData.dureeS;
     const kmSplits = formData.kmSplits.filter((s) => s != null);
@@ -1840,7 +1924,8 @@ async function updateActivity(activityId, formData) {
         allure_moyenne: allureMoyenne,
         km_splits: kmSplits.length ? kmSplits : null,
       })
-      .eq("id", activityId);
+      .eq("id", activityId)
+      .eq("user_id", userId);
 
     if (error) throw error;
 
@@ -1877,7 +1962,7 @@ function openEditActivity(id) {
 // Stats & calendrier (onglet Compte)
 // ============================================================
 
-function computeCounts(dates) {
+function computeCounts(activities) {
   const now = new Date();
   const startOfWeek = new Date(now);
   const dow = (startOfWeek.getDay() + 6) % 7;
@@ -1888,13 +1973,25 @@ function computeCounts(dates) {
   const startOfYear = new Date(now.getFullYear(), 0, 1);
 
   let week = 0, month = 0, year = 0;
-  for (const dStr of dates) {
-    const d = new Date(dStr + "T00:00:00");
-    if (d >= startOfYear) year++;
-    if (d >= startOfMonth) month++;
-    if (d >= startOfWeek) week++;
+  let distWeek = 0, distMonth = 0, distYear = 0;
+  let dureeWeek = 0, dureeMonth = 0, dureeYear = 0;
+  for (const a of activities) {
+    const d = new Date(a.date + "T00:00:00");
+    const dist = a.distance_m || 0;
+    const duree = a.duree_s || 0;
+    if (d >= startOfYear) { year++; distYear += dist; dureeYear += duree; }
+    if (d >= startOfMonth) { month++; distMonth += dist; dureeMonth += duree; }
+    if (d >= startOfWeek) { week++; distWeek += dist; dureeWeek += duree; }
   }
-  return { week, month, year };
+  return {
+    week, month, year,
+    distWeek, distMonth, distYear,
+    dureeWeek, dureeMonth, dureeYear,
+  };
+}
+
+function formatDistanceKm(meters) {
+  return `${(meters / 1000).toFixed(1)} km`;
 }
 
 // ============================================================
@@ -2677,7 +2774,7 @@ function tabAccount() {
   const user = state.session?.user;
   const avatarUrl = user?.user_metadata?.avatar_url;
   const pseudo = getPseudo();
-  const counts = computeCounts(state.allActivities.map((a) => a.date));
+  const counts = computeCounts(state.allActivities);
   const streak = computeStreak(state.allActivities.map((a) => a.date));
   const profil = getProfil();
 
@@ -2713,6 +2810,34 @@ function tabAccount() {
         <div class="stat-box">
           <span class="stat-number">${counts.year}</span>
           <span class="stat-label">Cette année</span>
+        </div>
+      </div>
+      <div class="stats-row">
+        <div class="stat-box">
+          <span class="stat-number">${formatDistanceKm(counts.distWeek)}</span>
+          <span class="stat-label">Distance semaine</span>
+        </div>
+        <div class="stat-box">
+          <span class="stat-number">${formatDistanceKm(counts.distMonth)}</span>
+          <span class="stat-label">Distance mois</span>
+        </div>
+        <div class="stat-box">
+          <span class="stat-number">${formatDistanceKm(counts.distYear)}</span>
+          <span class="stat-label">Distance année</span>
+        </div>
+      </div>
+      <div class="stats-row">
+        <div class="stat-box">
+          <span class="stat-number">${formatTemps(counts.dureeWeek)}</span>
+          <span class="stat-label">Durée semaine</span>
+        </div>
+        <div class="stat-box">
+          <span class="stat-number">${formatTemps(counts.dureeMonth)}</span>
+          <span class="stat-label">Durée mois</span>
+        </div>
+        <div class="stat-box">
+          <span class="stat-number">${formatTemps(counts.dureeYear)}</span>
+          <span class="stat-label">Durée année</span>
         </div>
       </div>
     </section>
@@ -3155,13 +3280,24 @@ function attachHandlers() {
         parseDuree(input.value)
       );
 
-      saveActivity({
+      const payload = {
         date: document.getElementById("f-date").value,
         distanceKm: parseFloat(document.getElementById("f-distance").value),
         dureeS,
         deniveleM: parseFloat(document.getElementById("f-denivele").value) || 0,
         kmSplits,
-      });
+      };
+
+      // Important : en mode édition, on doit METTRE À JOUR l'activité existante
+      // et non en créer une nouvelle. Appeler saveActivity() ici (comme avant)
+      // insérait une ligne supplémentaire à chaque modification, ce qui faussait
+      // tous les compteurs (semaine/mois/année, badges, streak...) en comptant
+      // deux fois la même course.
+      if (state.editingActivityId) {
+        updateActivity(state.editingActivityId, payload);
+      } else {
+        saveActivity(payload);
+      }
     });
   }
 }
