@@ -848,6 +848,245 @@ button {
 }
 .badge-card.tier-platine .badge-tier-label { color: #bfe3ea; }
 
+.badge-card[data-badge-type] {
+  cursor: pointer;
+  transition: transform 0.12s ease, background 0.12s ease;
+}
+.badge-card[data-badge-type]:hover,
+.badge-card[data-badge-type]:focus-visible {
+  background: rgba(238,241,232,0.06);
+  transform: translateY(-1px);
+  outline: none;
+}
+
+/* ---------- Modal de détail badge ---------- */
+
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(10,16,12,0.72);
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  z-index: 200;
+  padding: 0;
+}
+
+@media (min-width: 561px) {
+  .modal-overlay { align-items: center; padding: 24px; }
+}
+
+.modal-card {
+  background: var(--ink-soft);
+  width: 100%;
+  max-width: 460px;
+  max-height: 86vh;
+  overflow-y: auto;
+  border-radius: 16px 16px 0 0;
+  padding: 24px 20px 28px;
+  position: relative;
+  box-shadow: 0 -4px 24px rgba(0,0,0,0.4);
+}
+
+@media (min-width: 561px) {
+  .modal-card { border-radius: 14px; }
+}
+
+.modal-close {
+  position: absolute;
+  top: 14px;
+  right: 14px;
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  border: none;
+  background: rgba(238,241,232,0.1);
+  color: var(--paper);
+  font-size: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.modal-close:hover { background: rgba(238,241,232,0.18); }
+
+.modal-badge-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 4px;
+  padding-right: 30px;
+}
+
+.modal-badge-icon { font-size: 34px; }
+
+.modal-badge-header h3 {
+  font-family: var(--font-display);
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+  font-size: 18px;
+  margin: 0;
+}
+
+.badge-tier-ladder {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: 14px 0 6px;
+}
+
+.tier-row {
+  display: grid;
+  grid-template-columns: 24px 1fr auto auto;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 12px;
+  border-radius: 8px;
+  background: rgba(238,241,232,0.04);
+  border: 1px solid rgba(238,241,232,0.06);
+  font-size: 13px;
+}
+
+.tier-row.is-reached {
+  background: rgba(193,80,46,0.12);
+  border-color: rgba(193,80,46,0.3);
+}
+
+.tier-row-icon { font-size: 15px; text-align: center; }
+
+.tier-row-label { font-family: var(--font-mono); font-size: 12.5px; }
+
+.tier-row-count {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: rgba(238,241,232,0.5);
+}
+
+.tier-row-check {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--signal);
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.tier-row-remaining {
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  color: rgba(238,241,232,0.4);
+  white-space: nowrap;
+}
+
+.badge-dates-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 20px;
+  margin-bottom: 8px;
+}
+
+.badge-dates-header h4,
+.badge-speed-section h4 {
+  font-family: var(--font-display);
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+  font-size: 13px;
+  margin: 0;
+  color: rgba(238,241,232,0.85);
+}
+
+.btn-chip-small {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--paper);
+  background: rgba(238,241,232,0.08);
+  border: 1px solid rgba(238,241,232,0.16);
+  border-radius: 999px;
+  padding: 5px 10px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.btn-chip-small:hover { background: rgba(238,241,232,0.14); }
+
+.badge-dates-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  max-height: 160px;
+  overflow-y: auto;
+}
+
+.badge-dates-list li {
+  font-family: var(--font-mono);
+  font-size: 12.5px;
+  color: rgba(238,241,232,0.75);
+  padding: 7px 12px;
+  background: rgba(238,241,232,0.03);
+  border-radius: 6px;
+}
+
+.badge-speed-section {
+  margin-top: 22px;
+  padding-top: 16px;
+  border-top: 1px solid rgba(91,122,90,0.25);
+}
+
+/* ---------- Notifications toast (nouveaux paliers) ---------- */
+
+.toast-stack {
+  position: fixed;
+  top: 14px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 300;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: calc(100% - 32px);
+  max-width: 420px;
+  pointer-events: none;
+}
+
+.toast {
+  pointer-events: auto;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: var(--ink-soft);
+  border: 1px solid var(--signal);
+  box-shadow: 0 4px 16px rgba(0,0,0,0.35);
+  border-radius: 10px;
+  padding: 12px 14px;
+  animation: toast-in 0.25s ease;
+}
+
+@keyframes toast-in {
+  from { opacity: 0; transform: translateY(-8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.toast-icon { font-size: 20px; flex-shrink: 0; }
+
+.toast-text {
+  flex: 1;
+  font-size: 12.5px;
+  line-height: 1.4;
+}
+
+.toast-text strong { color: var(--signal); }
+
+.toast-close {
+  border: none;
+  background: transparent;
+  color: rgba(238,241,232,0.6);
+  font-size: 13px;
+  padding: 2px 4px;
+  flex-shrink: 0;
+}
+.toast-close:hover { color: var(--paper); }
+
 .btn-chip {
   font-family: var(--font-mono);
   font-size: 11px;
@@ -1004,6 +1243,9 @@ let state = {
   recordSaving: false,
   accountView: "apercu",
   chartFullYear: false,
+  badgeModal: null,        // { type: 'distance'|'duration', index } | null
+  badgeModalSort: "desc",  // 'desc' | 'asc' — tri des dates d'obtention
+  notifications: [],       // toasts de nouveaux paliers/badges débloqués
 };
 
 function setState(patch) {
@@ -1104,6 +1346,12 @@ function formatTemps(s) {
   const sec = Math.round(s % 60);
   if (h > 0) return `${h}h${String(m).padStart(2, "0")}`;
   return `${m}:${String(sec).padStart(2, "0")}`;
+}
+
+function formatDateFr(iso) {
+  if (!iso) return "—";
+  const d = new Date(iso + "T00:00:00");
+  return d.toLocaleDateString("fr-FR", { day: "2-digit", month: "short", year: "numeric" });
 }
 
 // Accepte "mm:ss" ou "hh:mm:ss" → secondes
@@ -1273,11 +1521,28 @@ async function saveActivity(formData) {
       }
     }
 
-    setState({ loading: false, route: "dashboard", tab: "activities" });
-    loadAppData();
+    const activitiesBefore = state.allActivities;
+    await loadAppData();
+    const unlocks = detectBadgeUnlocks(activitiesBefore, state.allActivities);
+    const newNotifications = unlocks.map((u) => ({ id: `${Date.now()}-${Math.random()}`, ...u }));
+
+    setState({
+      loading: false,
+      route: "dashboard",
+      tab: "activities",
+      notifications: [...state.notifications, ...newNotifications],
+    });
+
+    newNotifications.forEach((n) => scheduleNotificationDismiss(n.id));
   } catch (e) {
     setState({ loading: false, error: "Erreur lors de l'enregistrement : " + e.message });
   }
+}
+
+function scheduleNotificationDismiss(id) {
+  setTimeout(() => {
+    setState({ notifications: state.notifications.filter((n) => n.id !== id) });
+  }, 6000);
 }
 
 // ============================================================
@@ -1510,43 +1775,119 @@ const ACTIVITY_BADGES = [
   { count: 100, label: "100 activités", icon: "🏆" },
 ];
 
+// Seuils de palier différenciés par distance : répéter un marathon 30 fois
+// n'a rien à voir avec répéter un 5 km 30 fois, donc chaque badge a ses
+// propres seuils Bronze / Argent / Or / Platine, plus exigeants pour les
+// courtes distances (faciles à répéter) et plus accessibles pour les longues.
 const DISTANCE_BADGES = [
-  { meters: 5000, label: "5 km", icon: "🎯" },
-  { meters: 10000, label: "10 km", icon: "🔥" },
-  { meters: 15000, label: "15 km", icon: "💪" },
-  { meters: 20000, label: "20 km", icon: "🚀" },
-  { meters: 21097, label: "Semi (21,097 km)", icon: "🥈" },
-  { meters: 42195, label: "42,195 km — Marathon", icon: "👑" },
+  { meters: 5000, label: "5 km", icon: "🎯", tierThresholds: [1, 10, 30, 60] },
+  { meters: 10000, label: "10 km", icon: "🔥", tierThresholds: [1, 8, 20, 40] },
+  { meters: 15000, label: "15 km", icon: "💪", tierThresholds: [1, 6, 15, 30] },
+  { meters: 20000, label: "20 km", icon: "🚀", tierThresholds: [1, 5, 12, 25] },
+  { meters: 21097, label: "Semi (21,097 km)", icon: "🥈", tierThresholds: [1, 4, 10, 20] },
+  { meters: 42195, label: "42,195 km — Marathon", icon: "👑", tierThresholds: [1, 2, 5, 10] },
 ];
 
 const DURATION_BADGES = [
-  { seconds: 1800, label: "30 min", icon: "⏱️" },
-  { seconds: 3600, label: "1h", icon: "⏳" },
-  { seconds: 5400, label: "1h30", icon: "🕐" },
-  { seconds: 7200, label: "2h", icon: "🕑" },
-  { seconds: 10800, label: "3h", icon: "🕒" },
-  { seconds: 14400, label: "4h", icon: "🕓" },
+  { seconds: 1800, label: "30 min", icon: "⏱️", tierThresholds: [1, 10, 30, 60] },
+  { seconds: 3600, label: "1h", icon: "⏳", tierThresholds: [1, 8, 20, 40] },
+  { seconds: 5400, label: "1h30", icon: "🕐", tierThresholds: [1, 6, 15, 30] },
+  { seconds: 7200, label: "2h", icon: "🕑", tierThresholds: [1, 5, 12, 25] },
+  { seconds: 10800, label: "3h", icon: "🕒", tierThresholds: [1, 3, 8, 15] },
+  { seconds: 14400, label: "4h", icon: "🕓", tierThresholds: [1, 2, 5, 10] },
 ];
 
-// Paliers de répétition : chaque badge "répétable" (distance / durée) peut
-// être obtenu plusieurs fois. Le nombre d'obtentions détermine le palier.
-const BADGE_TIERS = [
-  { key: "bronze", threshold: 1, label: "Bronze", icon: "🥉" },
-  { key: "argent", threshold: 5, label: "Argent", icon: "🥈" },
-  { key: "or", threshold: 15, label: "Or", icon: "🥇" },
-  { key: "platine", threshold: 30, label: "Platine", icon: "💎" },
+// Métadonnées visuelles des paliers (communes à tous les badges — seuls les
+// seuils numériques varient d'un badge à l'autre, cf. tierThresholds).
+const TIER_META = [
+  { key: "bronze", label: "Bronze", icon: "🥉" },
+  { key: "argent", label: "Argent", icon: "🥈" },
+  { key: "or", label: "Or", icon: "🥇" },
+  { key: "platine", label: "Platine", icon: "💎" },
 ];
 
-function computeTier(achievedCount) {
+function computeTierForThresholds(achievedCount, thresholds) {
   let current = null;
-  for (const tier of BADGE_TIERS) {
-    if (achievedCount >= tier.threshold) current = tier;
+  for (let i = 0; i < thresholds.length; i++) {
+    if (achievedCount >= thresholds[i]) current = { ...TIER_META[i], threshold: thresholds[i] };
   }
   return current;
 }
 
-function nextTier(achievedCount) {
-  return BADGE_TIERS.find((tier) => achievedCount < tier.threshold) || null;
+function nextTierForThresholds(achievedCount, thresholds) {
+  for (let i = 0; i < thresholds.length; i++) {
+    if (achievedCount < thresholds[i]) return { ...TIER_META[i], threshold: thresholds[i] };
+  }
+  return null;
+}
+
+// Tolérance utilisée pour rattacher une activité à une distance "cible"
+// (même logique que le calcul des records personnels).
+function matchesDistanceCategory(distanceM, targetM) {
+  return Math.abs(distanceM - targetM) / targetM < 0.03;
+}
+
+// Paliers de vitesse par distance — "badge combiné vitesse". Des seuils de
+// temps réalistes et progressifs, propres à chaque distance.
+const SPEED_TIERS_BY_METERS = {
+  5000: [
+    { label: "Sous les 30:00", seconds: 1800 },
+    { label: "Sous les 25:00", seconds: 1500 },
+    { label: "Sous les 22:00", seconds: 1320 },
+    { label: "Sous les 20:00", seconds: 1200 },
+    { label: "Sous les 18:00", seconds: 1080 },
+  ],
+  10000: [
+    { label: "Sous 1h00", seconds: 3600 },
+    { label: "Sous 50:00", seconds: 3000 },
+    { label: "Sous 45:00", seconds: 2700 },
+    { label: "Sous 40:00", seconds: 2400 },
+    { label: "Sous 35:00", seconds: 2100 },
+  ],
+  15000: [
+    { label: "Sous 1h30", seconds: 5400 },
+    { label: "Sous 1h15", seconds: 4500 },
+    { label: "Sous 1h06", seconds: 3960 },
+    { label: "Sous 1h00", seconds: 3600 },
+  ],
+  20000: [
+    { label: "Sous 2h00", seconds: 7200 },
+    { label: "Sous 1h40", seconds: 6000 },
+    { label: "Sous 1h30", seconds: 5400 },
+    { label: "Sous 1h20", seconds: 4800 },
+  ],
+  21097: [
+    { label: "Sous 2h10", seconds: 7800 },
+    { label: "Sous 1h50", seconds: 6600 },
+    { label: "Sous 1h40", seconds: 6000 },
+    { label: "Sous 1h30", seconds: 5400 },
+  ],
+  42195: [
+    { label: "Sous 4h30", seconds: 16200 },
+    { label: "Sous 4h00", seconds: 14400 },
+    { label: "Sous 3h30", seconds: 12600 },
+    { label: "Sous 3h00", seconds: 10800 },
+    { label: "Sous 2h30", seconds: 9000 },
+  ],
+};
+
+function computeSpeedBadges(activities, targetMeters) {
+  const tiers = SPEED_TIERS_BY_METERS[targetMeters] || [];
+  const relevant = activities.filter((a) => matchesDistanceCategory(a.distance_m || 0, targetMeters));
+  return tiers.map((t) => {
+    const matches = relevant
+      .filter((a) => (a.duree_s || 0) > 0 && a.duree_s <= t.seconds)
+      .sort((a, b) => (a.date < b.date ? 1 : -1));
+    return {
+      ...t,
+      achievedCount: matches.length,
+      unlocked: matches.length > 0,
+      bestDate: matches.length
+        ? matches.reduce((best, a) => (a.duree_s < best.duree_s ? a : best)).date
+        : null,
+      dates: matches.map((a) => a.date),
+    };
+  });
 }
 
 function computeBadges(activities) {
@@ -1555,28 +1896,80 @@ function computeBadges(activities) {
   const activityBadges = ACTIVITY_BADGES.map((b) => ({ ...b, unlocked: count >= b.count }));
 
   const distanceBadges = DISTANCE_BADGES.map((b) => {
-    const achievedCount = activities.filter((a) => (a.distance_m || 0) >= b.meters).length;
+    const matches = activities
+      .filter((a) => (a.distance_m || 0) >= b.meters)
+      .sort((a, b2) => (a.date < b2.date ? 1 : -1));
+    const achievedCount = matches.length;
     return {
       ...b,
       achievedCount,
       unlocked: achievedCount > 0,
-      tier: computeTier(achievedCount),
-      next: nextTier(achievedCount),
+      tier: computeTierForThresholds(achievedCount, b.tierThresholds),
+      next: nextTierForThresholds(achievedCount, b.tierThresholds),
+      dates: matches.map((a) => a.date),
     };
   });
 
   const durationBadges = DURATION_BADGES.map((b) => {
-    const achievedCount = activities.filter((a) => (a.duree_s || 0) >= b.seconds).length;
+    const matches = activities
+      .filter((a) => (a.duree_s || 0) >= b.seconds)
+      .sort((a, b2) => (a.date < b2.date ? 1 : -1));
+    const achievedCount = matches.length;
     return {
       ...b,
       achievedCount,
       unlocked: achievedCount > 0,
-      tier: computeTier(achievedCount),
-      next: nextTier(achievedCount),
+      tier: computeTierForThresholds(achievedCount, b.tierThresholds),
+      next: nextTierForThresholds(achievedCount, b.tierThresholds),
+      dates: matches.map((a) => a.date),
     };
   });
 
   return { activityBadges, distanceBadges, durationBadges };
+}
+
+// Compare l'état des badges avant/après une nouvelle activité pour détecter
+// les nouveaux paliers débloqués (notification). Prend les listes brutes
+// d'activités avant/après l'ajout.
+function detectBadgeUnlocks(activitiesBefore, activitiesAfter) {
+  const before = computeBadges(activitiesBefore);
+  const after = computeBadges(activitiesAfter);
+  const messages = [];
+
+  after.activityBadges.forEach((b, i) => {
+    if (b.unlocked && !before.activityBadges[i].unlocked) {
+      messages.push({ icon: b.icon, text: `Badge débloqué : <strong>${b.label}</strong> !` });
+    }
+  });
+
+  const compareTiered = (beforeList, afterList) => {
+    afterList.forEach((b, i) => {
+      const beforeTierKey = beforeList[i].tier ? beforeList[i].tier.key : null;
+      const afterTierKey = b.tier ? b.tier.key : null;
+      if (afterTierKey && afterTierKey !== beforeTierKey) {
+        messages.push({
+          icon: b.tier.icon,
+          text: `Nouveau palier : <strong>${b.label} — ${b.tier.label}</strong> (×${b.achievedCount}) !`,
+        });
+      }
+    });
+  };
+
+  compareTiered(before.distanceBadges, after.distanceBadges);
+  compareTiered(before.durationBadges, after.durationBadges);
+
+  // Badges combinés vitesse : uniquement sur les distances
+  DISTANCE_BADGES.forEach((db) => {
+    const beforeSpeed = computeSpeedBadges(activitiesBefore, db.meters);
+    const afterSpeed = computeSpeedBadges(activitiesAfter, db.meters);
+    afterSpeed.forEach((s, i) => {
+      if (s.unlocked && !beforeSpeed[i].unlocked) {
+        messages.push({ icon: "⚡", text: `Badge vitesse débloqué : <strong>${db.label} ${s.label}</strong> !` });
+      }
+    });
+  });
+
+  return messages;
 }
 
 const MONTH_LABELS_SHORT = ["Jan", "Fév", "Mar", "Avr", "Mai", "Juin", "Juil", "Août", "Sep", "Oct", "Nov", "Déc"];
