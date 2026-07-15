@@ -1079,6 +1079,69 @@ button {
   border-radius: 10px;
 }
 
+.badge-dates-list li.is-linked {
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  transition: background 0.15s ease;
+}
+.badge-dates-list li.is-linked:hover,
+.badge-dates-list li.is-linked:focus-visible {
+  background: rgba(139,195,74,0.14);
+  color: var(--paper);
+}
+.badge-dates-list li.is-linked .li-arrow { opacity: 0.5; }
+
+.split-row.is-linked { cursor: pointer; }
+.split-row.is-linked:hover .split-label,
+.split-row.is-linked:focus-visible .split-label { color: var(--signal); }
+
+.record-rank-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  max-height: 320px;
+  overflow-y: auto;
+}
+.record-rank-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 12px;
+  background: rgba(238,241,232,0.03);
+  border-radius: 10px;
+  font-family: var(--font-mono);
+  font-size: 13px;
+}
+.record-rank-row.is-linked { cursor: pointer; transition: background 0.15s ease; }
+.record-rank-row.is-linked:hover,
+.record-rank-row.is-linked:focus-visible { background: rgba(139,195,74,0.14); }
+.record-rank-row.is-best { border: 1px solid rgba(182,217,40,0.4); }
+.record-rank-rank {
+  color: rgba(238,241,232,0.5);
+  width: 22px;
+  flex-shrink: 0;
+}
+.record-rank-row.is-best .record-rank-rank { color: var(--signal); }
+.record-rank-time {
+  font-weight: 600;
+  min-width: 70px;
+}
+.record-rank-date {
+  color: rgba(238,241,232,0.6);
+  flex: 1;
+}
+.record-rank-tag {
+  font-family: var(--font-body);
+  font-size: 10.5px;
+  color: rgba(238,241,232,0.4);
+}
+
 .badge-speed-section {
   margin-top: 22px;
   padding-top: 16px;
@@ -1375,6 +1438,7 @@ let state = {
   chartFullYear: false,
   badgeModal: null,        // { type: 'distance'|'duration', index } | null
   badgeModalSort: "desc",  // 'desc' | 'asc' — tri des dates d'obtention
+  recordsModal: null,      // distance_label affiché dans la modale de classement des perfs, ou null
   notifications: [],       // toasts de nouveaux paliers/badges débloqués
   activityDetailId: null,  // id de l'activité affichée dans la modale de détail
   editingActivityId: null, // id de l'activité en cours de modification (formulaire add-activity réutilisé)
@@ -1557,7 +1621,7 @@ async function loadAppData() {
   try {
     const { data: prs, error } = await supabase
       .from("personal_records")
-      .select("distance_label, meilleur_temps_s")
+      .select("distance_label, meilleur_temps_s, activity_id, date_obtenu")
       .order("distance_label");
     if (error) throw error;
 
@@ -1567,9 +1631,14 @@ async function loadAppData() {
       .order("date", { ascending: false })
       .limit(30);
 
+    // Toutes les colonnes sont nécessaires ici : id (pour relier badges/records
+    // à l'activité d'origine et permettre la redirection), km_splits (pour le
+    // classement des performances par distance) et les autres champs affichés
+    // dans la modale de détail lorsqu'elle est ouverte depuis un badge/record
+    // portant sur une activité plus ancienne que les 30 dernières.
     const { data: allActivities } = await supabase
       .from("activities")
-      .select("date, distance_m, duree_s");
+      .select("*");
 
     setState({
       prs: prs || [],
@@ -1617,6 +1686,33 @@ function computeBestEfforts(distanceM, dureeS, kmSplits) {
   }
 
   return results;
+}
+
+// Pour chaque distance de DISTANCE_ORDER, classe TOUTES les activités qui
+// couvrent cette distance (une entrée par activité, sa meilleure performance
+// sur ce label) plutôt que de ne garder que le record en cours — utilisé par
+// l'écran "Records" pour afficher l'historique complet des perfs, pas
+// uniquement la meilleure.
+function computeAllBestEffortsByLabel(activities) {
+  const byLabel = {};
+  for (const label of DISTANCE_ORDER) byLabel[label] = [];
+
+  for (const a of activities || []) {
+    const efforts = computeBestEfforts(a.distance_m, a.duree_s, a.km_splits);
+    for (const eff of efforts) {
+      byLabel[eff.distance_label].push({
+        temps_s: eff.temps_s,
+        activity_id: a.id,
+        date: a.date,
+      });
+    }
+  }
+
+  for (const label of DISTANCE_ORDER) {
+    byLabel[label].sort((a, b) => a.temps_s - b.temps_s);
+  }
+
+  return byLabel;
 }
 
 async function saveActivity(formData) {
@@ -1856,21 +1952,21 @@ async function deleteActivity(activityId) {
       .eq("activity_id", activityId);
     const affectedLabels = (linkedPRs || []).map((p) => p.distance_label);
 
-    const { data, error } = await supabase
+    // On utilise { count: "exact" } plutôt qu'un .select() après coup : un
+    // .select() sur une ligne qui vient d'être supprimée dépend d'une policy
+    // RLS "SELECT" pour pouvoir la renvoyer, et remonte un tableau vide si
+    // cette policy manque — même quand la suppression a réellement fonctionné.
+    // Cela donnait l'impression trompeuse que "supprimer" échouait à chaque
+    // fois. Le count, lui, reflète directement le nombre de lignes affectées
+    // par le DELETE (gouverné par la policy "DELETE", pas "SELECT").
+    const { error, count } = await supabase
       .from("activities")
-      .delete()
+      .delete({ count: "exact" })
       .eq("id", activityId)
-      .eq("user_id", userId)
-      .select();
+      .eq("user_id", userId);
     if (error) throw error;
 
-    // Si aucune ligne n'a été renvoyée, la suppression n'a en réalité rien
-    // supprimé (le plus souvent parce qu'aucune policy RLS "DELETE" n'existe
-    // sur la table "activities" dans Supabase, ou qu'elle ne correspond pas
-    // à cette ligne) : Supabase ne remonte alors pas d'erreur, ce qui donnait
-    // l'impression trompeuse que la suppression fonctionnait alors que la
-    // course reste en base et réapparaît après rechargement.
-    if (!data || data.length === 0) {
+    if (!count) {
       throw new Error(
         "Aucune ligne supprimée. Vérifie qu'une policy RLS \"DELETE\" existe sur la table activities dans Supabase (autorisant user_id = auth.uid())."
       );
@@ -1934,15 +2030,23 @@ async function recomputeAffectedPRs(userId, affectedLabels) {
         .eq("distance_label", label);
     }
   }
+
+  return bestByLabel;
 }
 
 // ============================================================
 // Modification d'une activité existante
 // ============================================================
-// Contrairement à saveActivity, on ne recalcule pas les PR ici : modifier
-// une course a posteriori ne doit pas rouvrir la mécanique de détection de
-// record (qui dépend de l'ordre chronologique d'enregistrement). On se
-// contente de corriger les champs saisis.
+// Modifier une course change potentiellement ses temps/distance : les records
+// personnels doivent donc être recalculés, exactement comme lors d'une
+// suppression. Deux cas à couvrir :
+//  - l'activité détenait déjà un ou plusieurs PR : si l'édition la rend moins
+//    bonne, ces PR doivent être recalculés (peut-être une autre activité
+//    prend le relais, ou le PR disparaît s'il n'y a plus aucune activité).
+//  - l'activité ne détenait aucun PR mais l'édition la rend désormais
+//    meilleure que le record actuel sur une distance : elle doit pouvoir
+//    décrocher ce nouveau PR.
+// On recalcule donc sur l'union des labels "avant" et "après" l'édition.
 async function updateActivity(activityId, formData) {
   setState({ loading: true, error: null });
   try {
@@ -1951,6 +2055,17 @@ async function updateActivity(activityId, formData) {
     const dureeS = formData.dureeS;
     const kmSplits = formData.kmSplits.filter((s) => s != null);
     const allureMoyenne = dureeS / (distanceM / 1000);
+
+    const { data: linkedPRs } = await supabase
+      .from("personal_records")
+      .select("distance_label")
+      .eq("user_id", userId)
+      .eq("activity_id", activityId);
+    const previousLabels = (linkedPRs || []).map((p) => p.distance_label);
+
+    const newEfforts = computeBestEfforts(distanceM, dureeS, kmSplits);
+    const newLabels = newEfforts.map((e) => e.distance_label);
+    const affectedLabels = Array.from(new Set([...previousLabels, ...newLabels]));
 
     const { error } = await supabase
       .from("activities")
@@ -1966,6 +2081,22 @@ async function updateActivity(activityId, formData) {
       .eq("user_id", userId);
 
     if (error) throw error;
+
+    if (affectedLabels.length) {
+      const bestByLabel = await recomputeAffectedPRs(userId, affectedLabels);
+      // Le badge "🏆 Record personnel" affiché sous une course est figé sur
+      // sa ligne (pr_labels) : on le remet à jour pour cette activité afin
+      // qu'il reflète sa nouvelle réalité après édition (record gagné, perdu,
+      // ou conservé).
+      const updatedPrLabels = affectedLabels.filter(
+        (label) => bestByLabel[label] && bestByLabel[label].activity_id === activityId
+      );
+      await supabase
+        .from("activities")
+        .update({ pr_labels: updatedPrLabels.length ? updatedPrLabels : null })
+        .eq("id", activityId)
+        .eq("user_id", userId);
+    }
 
     await loadAppData();
     setState({
@@ -2226,6 +2357,7 @@ function computeBadges(activities) {
       tier: computeTierForThresholds(achievedCount, b.tierThresholds),
       next: nextTierForThresholds(achievedCount, b.tierThresholds),
       dates: matches.map((a) => a.date),
+      entries: matches.map((a) => ({ id: a.id, date: a.date })),
     };
   });
 
@@ -2241,6 +2373,7 @@ function computeBadges(activities) {
       tier: computeTierForThresholds(achievedCount, b.tierThresholds),
       next: nextTierForThresholds(achievedCount, b.tierThresholds),
       dates: matches.map((a) => a.date),
+      entries: matches.map((a) => ({ id: a.id, date: a.date })),
     };
   });
 
@@ -2490,7 +2623,7 @@ function viewLogin() {
   `;
 }
 
-function splitLadder(prs) {
+function splitLadder(prs, rankingsByLabel) {
   if (!prs.length) {
     return `<p class="muted">Aucune course enregistrée pour l'instant. Ajoute ta première course pour voir apparaître tes records.</p>`;
   }
@@ -2503,8 +2636,11 @@ function splitLadder(prs) {
     const sec = pr ? pr.meilleur_temps_s : null;
     const widthPct = sec ? Math.max(12, (sec / maxSec) * 100) : 6;
     const empty = !sec;
+    const count = (rankingsByLabel && rankingsByLabel[label] ? rankingsByLabel[label].length : 0);
+    const clickable = !empty || count > 0;
     return `
-      <div class="split-row ${empty ? "is-empty" : ""}">
+      <div class="split-row ${empty ? "is-empty" : ""} ${clickable ? "is-linked" : ""}"
+           ${clickable ? `data-records-label="${label}" role="button" tabindex="0"` : ""}>
         <span class="split-label">${label}</span>
         <div class="split-track">
           <div class="split-bar" style="width:${widthPct}%"></div>
@@ -2514,7 +2650,51 @@ function splitLadder(prs) {
     `;
   }).join("");
 
-  return `<div class="split-ladder">${rows}</div>`;
+  return `<div class="split-ladder">${rows}</div><p class="muted" style="margin-top:8px;font-size:12.5px;">Touche une distance pour voir toutes tes performances, pas seulement la meilleure.</p>`;
+}
+
+// ---------- Modale de classement des performances sur une distance ----------
+
+function recordsRankingModal() {
+  const label = state.recordsModal;
+  if (!label) return "";
+
+  const rankingsByLabel = computeAllBestEffortsByLabel(state.allActivities);
+  const entries = rankingsByLabel[label] || [];
+
+  const pr = state.prs.find((p) => p.distance_label === label);
+  // Un record ajouté manuellement (sans activité liée, cf. recordForm) n'a
+  // pas forcément d'équivalent dans `entries` s'il n'a jamais été rattrapé
+  // par une vraie activité : on l'ajoute alors comme entrée non cliquable.
+  const hasManualEntry = pr && pr.activity_id == null
+    && !entries.some((e) => e.temps_s === pr.meilleur_temps_s);
+  const allEntries = hasManualEntry
+    ? [...entries, { temps_s: pr.meilleur_temps_s, activity_id: null, date: pr.date_obtenu }].sort((a, b) => a.temps_s - b.temps_s)
+    : entries;
+
+  const rowsHtml = allEntries.length
+    ? allEntries.map((e, i) => `
+        <li class="record-rank-row ${e.activity_id ? "is-linked" : ""} ${i === 0 ? "is-best" : ""}"
+            ${e.activity_id ? `data-activity-id="${e.activity_id}" role="button" tabindex="0"` : ""}>
+          <span class="record-rank-rank">#${i + 1}</span>
+          <span class="record-rank-time">${formatTemps(e.temps_s)}</span>
+          <span class="record-rank-date">${e.date ? formatDateFr(e.date) : ""}</span>
+          ${e.activity_id ? "" : `<span class="record-rank-tag">ajouté manuellement</span>`}
+        </li>
+      `).join("")
+    : `<p class="muted">Pas encore de performance enregistrée sur cette distance.</p>`;
+
+  return `
+    <div class="modal-overlay" id="records-detail-overlay">
+      <div class="modal-card">
+        <button class="modal-close" id="records-detail-close" aria-label="Fermer">✕</button>
+        <div class="modal-badge-header">
+          <h3>Tes performances — ${label}</h3>
+        </div>
+        <ul class="record-rank-list">${rowsHtml}</ul>
+      </div>
+    </div>
+  `;
 }
 
 function activityRow(a) {
@@ -2628,7 +2808,7 @@ function tabRecords() {
         </button>
       </div>
       ${state.recordFormOpen ? recordForm() : ""}
-      ${state.loading ? `<p class="muted">Chargement…</p>` : splitLadder(state.prs)}
+      ${state.loading ? `<p class="muted">Chargement…</p>` : splitLadder(state.prs, computeAllBestEffortsByLabel(state.allActivities))}
     </section>
 
     <section class="panel panel-split">
@@ -2641,6 +2821,7 @@ function tabRecords() {
         <p class="muted">Configure ton profil dans l'onglet Programme pour obtenir un plan adapté.</p>
       </div>
     </section>
+    ${state.recordsModal ? recordsRankingModal() : ""}
   `;
 }
 
@@ -2825,11 +3006,16 @@ function badgeDetailModal() {
     `;
   }).join("");
 
-  const sortedDates = [...badge.dates].sort((a, b) =>
-    state.badgeModalSort === "desc" ? (a < b ? 1 : -1) : (a < b ? -1 : 1)
+  const sortedEntries = [...badge.entries].sort((a, b) =>
+    state.badgeModalSort === "desc" ? (a.date < b.date ? 1 : -1) : (a.date < b.date ? -1 : 1)
   );
-  const datesHtml = sortedDates.length
-    ? `<ul class="badge-dates-list">${sortedDates.map((d) => `<li>${formatDateFr(d)}</li>`).join("")}</ul>`
+  const datesHtml = sortedEntries.length
+    ? `<ul class="badge-dates-list">${sortedEntries.map((e) => `
+        <li class="${e.id ? "is-linked" : ""}" ${e.id ? `data-activity-id="${e.id}" role="button" tabindex="0"` : ""}>
+          <span>${formatDateFr(e.date)}</span>
+          ${e.id ? `<span class="li-arrow">→</span>` : ""}
+        </li>
+      `).join("")}</ul>`
     : `<p class="muted">Pas encore obtenu.</p>`;
 
   const speedHtml = type === "distance" ? (() => {
@@ -3252,6 +3438,40 @@ function attachHandlers() {
     });
   }
 
+  document.querySelectorAll(".split-row.is-linked").forEach((row) => {
+    const open = () => setState({ recordsModal: row.dataset.recordsLabel });
+    row.addEventListener("click", open);
+    row.addEventListener("keydown", (e) => {
+      if (e.key === "Enter" || e.key === " ") {
+        e.preventDefault();
+        open();
+      }
+    });
+  });
+
+  const recordsDetailOverlay = document.getElementById("records-detail-overlay");
+  if (recordsDetailOverlay) {
+    recordsDetailOverlay.addEventListener("click", (e) => {
+      if (e.target === recordsDetailOverlay) setState({ recordsModal: null });
+    });
+  }
+
+  const recordsDetailClose = document.getElementById("records-detail-close");
+  if (recordsDetailClose) {
+    recordsDetailClose.addEventListener("click", () => setState({ recordsModal: null }));
+  }
+
+  document.querySelectorAll(".record-rank-row.is-linked").forEach((row) => {
+    const goToActivity = () => setState({ recordsModal: null, activityDetailId: row.dataset.activityId });
+    row.addEventListener("click", goToActivity);
+    row.addEventListener("keydown", (e) => {
+      if (e.key === "Enter" || e.key === " ") {
+        e.preventDefault();
+        goToActivity();
+      }
+    });
+  });
+
   const editPseudoBtn = document.getElementById("btn-edit-pseudo");
   if (editPseudoBtn) editPseudoBtn.addEventListener("click", () => setState({ pseudoEditing: true, error: null }));
 
@@ -3405,6 +3625,17 @@ function attachHandlers() {
       setState({ badgeModalSort: state.badgeModalSort === "desc" ? "asc" : "desc" });
     });
   }
+
+  document.querySelectorAll(".badge-dates-list li.is-linked").forEach((li) => {
+    const goToActivity = () => setState({ badgeModal: null, activityDetailId: li.dataset.activityId });
+    li.addEventListener("click", goToActivity);
+    li.addEventListener("keydown", (e) => {
+      if (e.key === "Enter" || e.key === " ") {
+        e.preventDefault();
+        goToActivity();
+      }
+    });
+  });
 
   document.querySelectorAll(".toast-close").forEach((btn) => {
     btn.addEventListener("click", () => {
