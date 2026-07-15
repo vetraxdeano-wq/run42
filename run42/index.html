@@ -330,13 +330,16 @@ button {
 
 .activity-row {
   display: grid;
-  grid-template-columns: 90px 1fr 90px 90px 30px;
+  grid-template-columns: 90px 1fr 90px 90px 30px 30px;
   align-items: center;
   gap: 12px;
   padding: 10px 0;
   font-family: var(--font-mono);
   font-size: 14px;
 }
+
+.activity-row-clickable { cursor: pointer; border-radius: 6px; transition: background 0.12s ease; }
+.activity-row-clickable:hover, .activity-row-clickable:focus-visible { background: rgba(238,241,232,0.04); outline: none; }
 
 .activity-pr-badge {
   font-family: var(--font-mono);
@@ -347,7 +350,7 @@ button {
 
 .activity-date { color: rgba(238,241,232,0.6); }
 
-.activity-delete-btn {
+.activity-delete-btn, .activity-edit-btn {
   background: none;
   border: none;
   padding: 4px;
@@ -355,10 +358,13 @@ button {
   align-items: center;
   justify-content: center;
   color: rgba(238,241,232,0.4);
+  position: relative;
+  z-index: 1;
 }
 
-.activity-delete-btn svg { width: 17px; height: 17px; }
+.activity-delete-btn svg, .activity-edit-btn svg { width: 17px; height: 17px; }
 .activity-delete-btn:hover { color: var(--rust); }
+.activity-edit-btn:hover { color: var(--signal); }
 
 /* ---------- Activity form ---------- */
 
@@ -1041,6 +1047,84 @@ button {
   border-top: 1px solid rgba(91,122,90,0.25);
 }
 
+/* ---------- Modale de détail d'une activité ---------- */
+
+.modal-activity-header {
+  padding-right: 30px;
+  margin-bottom: 4px;
+}
+
+.modal-activity-header h3 {
+  font-family: var(--font-display);
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+  font-size: 18px;
+  margin: 0 0 2px;
+}
+
+.modal-activity-header .muted { font-size: 13px; margin: 0; }
+
+.activity-detail-stats {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 10px;
+  margin: 18px 0;
+}
+
+.activity-detail-stat {
+  background: rgba(238,241,232,0.04);
+  border: 1px solid rgba(238,241,232,0.06);
+  border-radius: 8px;
+  padding: 10px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.activity-detail-stat .stat-label { font-size: 11px; color: rgba(238,241,232,0.5); }
+.activity-detail-stat .stat-value { font-family: var(--font-mono); font-size: 16px; }
+
+.activity-detail-splits {
+  margin-top: 18px;
+  padding-top: 14px;
+  border-top: 1px solid rgba(91,122,90,0.25);
+}
+
+.activity-detail-splits h4 {
+  font-family: var(--font-display);
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+  font-size: 13px;
+  margin: 0 0 10px;
+  color: rgba(238,241,232,0.85);
+}
+
+.split-chip-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(64px, 1fr));
+  gap: 6px;
+}
+
+.split-chip {
+  font-family: var(--font-mono);
+  font-size: 11.5px;
+  text-align: center;
+  padding: 6px 4px;
+  background: rgba(238,241,232,0.04);
+  border-radius: 6px;
+  color: rgba(238,241,232,0.75);
+}
+
+.modal-actions {
+  display: flex;
+  gap: 10px;
+  margin-top: 22px;
+  padding-top: 16px;
+  border-top: 1px solid rgba(91,122,90,0.25);
+}
+
+.modal-actions .btn-chip { flex: 1; text-align: center; }
+
 /* ---------- Notifications toast (nouveaux paliers) ---------- */
 
 .toast-stack {
@@ -1254,6 +1338,8 @@ let state = {
   badgeModal: null,        // { type: 'distance'|'duration', index } | null
   badgeModalSort: "desc",  // 'desc' | 'asc' — tri des dates d'obtention
   notifications: [],       // toasts de nouveaux paliers/badges débloqués
+  activityDetailId: null,  // id de l'activité affichée dans la modale de détail
+  editingActivityId: null, // id de l'activité en cours de modification (formulaire add-activity réutilisé)
 };
 
 function setState(patch) {
@@ -1353,6 +1439,18 @@ function formatTemps(s) {
   const m = Math.floor((s % 3600) / 60);
   const sec = Math.round(s % 60);
   if (h > 0) return `${h}h${String(m).padStart(2, "0")}`;
+  return `${m}:${String(sec).padStart(2, "0")}`;
+}
+
+// Comme formatTemps, mais renvoie toujours un format saisissable dans un
+// champ texte (mm:ss ou hh:mm:ss), utilisé pour préremplir le formulaire
+// de modification d'une course.
+function formatDureeInput(s) {
+  if (!s && s !== 0) return "";
+  const h = Math.floor(s / 3600);
+  const m = Math.floor((s % 3600) / 60);
+  const sec = Math.round(s % 60);
+  if (h > 0) return `${h}:${String(m).padStart(2, "0")}:${String(sec).padStart(2, "0")}`;
   return `${m}:${String(sec).padStart(2, "0")}`;
 }
 
@@ -1718,6 +1816,64 @@ async function deleteActivity(activityId) {
 }
 
 // ============================================================
+// Modification d'une activité existante
+// ============================================================
+// Contrairement à saveActivity, on ne recalcule pas les PR ici : modifier
+// une course a posteriori ne doit pas rouvrir la mécanique de détection de
+// record (qui dépend de l'ordre chronologique d'enregistrement). On se
+// contente de corriger les champs saisis.
+async function updateActivity(activityId, formData) {
+  setState({ loading: true, error: null });
+  try {
+    const distanceM = Math.round(formData.distanceKm * 1000);
+    const dureeS = formData.dureeS;
+    const kmSplits = formData.kmSplits.filter((s) => s != null);
+    const allureMoyenne = dureeS / (distanceM / 1000);
+
+    const { error } = await supabase
+      .from("activities")
+      .update({
+        date: formData.date,
+        distance_m: distanceM,
+        duree_s: dureeS,
+        denivele_m: formData.deniveleM || 0,
+        allure_moyenne: allureMoyenne,
+        km_splits: kmSplits.length ? kmSplits : null,
+      })
+      .eq("id", activityId);
+
+    if (error) throw error;
+
+    await loadAppData();
+    setState({
+      loading: false,
+      route: "dashboard",
+      tab: "activities",
+      editingActivityId: null,
+    });
+  } catch (e) {
+    setState({ loading: false, error: "Erreur lors de la modification : " + e.message });
+  }
+}
+
+// Ouvre le formulaire de course (réutilisé) préchargé avec les valeurs
+// existantes de l'activité, prêt à être modifiée puis renvoyé via updateActivity.
+function openEditActivity(id) {
+  const a = state.allActivities.find((x) => x.id === id) || state.activities.find((x) => x.id === id);
+  if (!a) return;
+  const splitInputsCount = a.km_splits && a.km_splits.length
+    ? a.km_splits.length
+    : Math.min(Math.floor(a.distance_m / 1000), 50);
+  setState({
+    route: "add-activity",
+    editingActivityId: id,
+    splitInputsCount,
+    error: null,
+    activityDetailId: null,
+  });
+}
+
+// ============================================================
 // Stats & calendrier (onglet Compte)
 // ============================================================
 
@@ -2014,29 +2170,64 @@ function computeMonthlyDistances(activities, year) {
   return monthsKm;
 }
 
+// Choisit un pas d'axe "rond" (1, 2, 5, 10, 20, 50, 100...) pour que les
+// graduations verticales tombent sur des valeurs de km lisibles.
+function niceAxisStep(maxValue, targetTicks) {
+  const rough = maxValue / targetTicks;
+  const magnitude = Math.pow(10, Math.floor(Math.log10(rough || 1)));
+  const residual = rough / magnitude;
+  let niceResidual;
+  if (residual > 5) niceResidual = 10;
+  else if (residual > 2) niceResidual = 5;
+  else if (residual > 1) niceResidual = 2;
+  else niceResidual = 1;
+  return niceResidual * magnitude;
+}
+
 function monthlyChart(monthsKm, monthIndices) {
   const indices = monthIndices || monthsKm.map((_, i) => i);
   const values = indices.map((i) => monthsKm[i]);
-  const width = 600, height = 150, padTop = 16, padBottom = 22, padSide = 24;
-  const max = Math.max(...values, 1);
-  const stepX = values.length > 1 ? (width - padSide * 2) / (values.length - 1) : 0;
+  const width = 600, height = 170, padTop = 16, padBottom = 22, padLeft = 40, padRight = 12;
+  const rawMax = Math.max(...values, 1);
+  const step = niceAxisStep(rawMax, 3);
+  const axisMax = Math.max(step, Math.ceil(rawMax / step) * step);
+  const plotWidth = width - padLeft - padRight;
+  const stepX = values.length > 1 ? plotWidth / (values.length - 1) : 0;
+
+  const yFor = (km) => height - padBottom - (km / axisMax) * (height - padTop - padBottom);
+
   const points = values.map((km, i) => {
-    const x = values.length > 1 ? padSide + i * stepX : width / 2;
-    const y = height - padBottom - (km / max) * (height - padTop - padBottom);
-    return { x, y, km, monthIndex: indices[i] };
+    const x = values.length > 1 ? padLeft + i * stepX : padLeft + plotWidth / 2;
+    return { x, y: yFor(km), km, monthIndex: indices[i] };
   });
   const pathD = points.map((p, i) => `${i === 0 ? "M" : "L"}${p.x.toFixed(1)},${p.y.toFixed(1)}`).join(" ");
   const areaD = `${pathD} L${points[points.length - 1].x.toFixed(1)},${height - padBottom} L${points[0].x.toFixed(1)},${height - padBottom} Z`;
-  const dots = points.map((p) => `<circle cx="${p.x.toFixed(1)}" cy="${p.y.toFixed(1)}" r="3" fill="var(--rust)" />`).join("");
-  const labels = points.map((p) => `<text x="${p.x.toFixed(1)}" y="${height - 4}" text-anchor="middle" font-size="9" fill="rgba(238,241,232,0.5)" font-family="var(--font-mono)">${MONTH_LABELS_SHORT[p.monthIndex]}</text>`).join("");
+  const dots = points.map((p) => `<circle cx="${p.x.toFixed(1)}" cy="${p.y.toFixed(1)}" r="3" fill="var(--rust)"><title>${p.km.toFixed(1)} km</title></circle>`).join("");
+  const valueLabels = points.map((p) => `<text x="${p.x.toFixed(1)}" y="${(p.y - 8).toFixed(1)}" text-anchor="middle" font-size="9" fill="rgba(238,241,232,0.75)" font-family="var(--font-mono)">${p.km > 0 ? p.km.toFixed(0) : ""}</text>`).join("");
+  const monthLabels = points.map((p) => `<text x="${p.x.toFixed(1)}" y="${height - 4}" text-anchor="middle" font-size="9" fill="rgba(238,241,232,0.5)" font-family="var(--font-mono)">${MONTH_LABELS_SHORT[p.monthIndex]}</text>`).join("");
+
+  // Graduations de l'axe vertical (distance totale du mois, en km)
+  const tickCount = Math.round(axisMax / step);
+  const yTicks = [];
+  for (let i = 0; i <= tickCount; i++) yTicks.push(i * step);
+  const gridLines = yTicks.map((km) => {
+    const y = yFor(km);
+    return `
+      <line x1="${padLeft}" y1="${y.toFixed(1)}" x2="${width - padRight}" y2="${y.toFixed(1)}" stroke="rgba(238,241,232,0.08)" stroke-width="1" ${km === 0 ? "" : 'stroke-dasharray="3,3"'} />
+      <text x="${padLeft - 8}" y="${(y + 3).toFixed(1)}" text-anchor="end" font-size="9" fill="rgba(238,241,232,0.45)" font-family="var(--font-mono)">${km}</text>
+    `;
+  }).join("");
 
   return `
     <div class="distance-chart-wrap">
       <svg viewBox="0 0 ${width} ${height}" class="distance-chart" preserveAspectRatio="none">
+        ${gridLines}
+        <text x="${padLeft}" y="12" font-size="9" fill="rgba(238,241,232,0.45)" font-family="var(--font-mono)">km</text>
         <path d="${areaD}" fill="rgba(193,80,46,0.15)" stroke="none" />
         <path d="${pathD}" fill="none" stroke="var(--rust)" stroke-width="2" />
         ${dots}
-        ${labels}
+        ${valueLabels}
+        ${monthLabels}
       </svg>
     </div>
   `;
@@ -2204,15 +2395,76 @@ function activityRow(a) {
     ? `<div class="activity-pr-badge">🏆 Record personnel — ${a.pr_labels.join(", ")}</div>`
     : "";
   return `
-    <div class="activity-row-wrap">
+    <div class="activity-row-wrap activity-row-clickable" data-id="${a.id}" role="button" tabindex="0">
       <div class="activity-row">
         <span class="activity-date">${dateFormatted}</span>
         <span>${km} km</span>
         <span>${formatTemps(a.duree_s)}</span>
         <span class="muted">${allure}</span>
+        <button class="activity-edit-btn" data-id="${a.id}" aria-label="Modifier cette course" title="Modifier">${ICONS.edit}</button>
         <button class="activity-delete-btn" data-id="${a.id}" aria-label="Supprimer cette course" title="Supprimer">${ICONS.trash}</button>
       </div>
       ${prBadge}
+    </div>
+  `;
+}
+
+function activityDetailModal() {
+  const a = state.allActivities.find((x) => x.id === state.activityDetailId)
+    || state.activities.find((x) => x.id === state.activityDetailId);
+  if (!a) return "";
+
+  const km = (a.distance_m / 1000).toFixed(2);
+  const allure = formatTemps(a.allure_moyenne) + "/km";
+  const dateFormatted = formatDateFr(a.date);
+
+  const prBadge = a.pr_labels && a.pr_labels.length
+    ? `<div class="activity-pr-badge">🏆 Record personnel — ${a.pr_labels.join(", ")}</div>`
+    : "";
+
+  const splitsHtml = a.km_splits && a.km_splits.length
+    ? `
+      <div class="activity-detail-splits">
+        <h4>Temps intermédiaires</h4>
+        <div class="split-chip-grid">
+          ${a.km_splits.map((s, i) => `<span class="split-chip">Km ${i + 1}<br>${formatTemps(s)}</span>`).join("")}
+        </div>
+      </div>
+    `
+    : "";
+
+  return `
+    <div class="modal-overlay" id="activity-detail-overlay">
+      <div class="modal-card">
+        <button class="modal-close" id="activity-detail-close" aria-label="Fermer">✕</button>
+        <div class="modal-activity-header">
+          <h3>Course du ${dateFormatted}</h3>
+          ${prBadge}
+        </div>
+        <div class="activity-detail-stats">
+          <div class="activity-detail-stat">
+            <span class="stat-label">Distance</span>
+            <span class="stat-value">${km} km</span>
+          </div>
+          <div class="activity-detail-stat">
+            <span class="stat-label">Durée</span>
+            <span class="stat-value">${formatTemps(a.duree_s)}</span>
+          </div>
+          <div class="activity-detail-stat">
+            <span class="stat-label">Allure moyenne</span>
+            <span class="stat-value">${allure}</span>
+          </div>
+          <div class="activity-detail-stat">
+            <span class="stat-label">Dénivelé positif</span>
+            <span class="stat-value">${a.denivele_m || 0} m</span>
+          </div>
+        </div>
+        ${splitsHtml}
+        <div class="modal-actions">
+          <button class="btn-chip" id="activity-detail-edit" data-id="${a.id}">Modifier</button>
+          <button class="btn-chip" id="activity-detail-delete" data-id="${a.id}">Supprimer</button>
+        </div>
+      </div>
     </div>
   `;
 }
@@ -2569,20 +2821,31 @@ function viewShell() {
       ${navItem("programme", ICONS.programme)}
       ${navItem("account", ICONS.account)}
     </nav>
+
+    ${state.activityDetailId ? activityDetailModal() : ""}
   `;
 }
 
 function viewAddActivity() {
-  const splitsHtml = Array.from({ length: state.splitInputsCount }, (_, i) => `
-    <label class="split-input-label">
-      Km ${i + 1}
-      <input type="text" class="km-split-input" data-index="${i}" placeholder="mm:ss" />
-    </label>
-  `).join("");
+  const editing = state.editingActivityId
+    ? (state.allActivities.find((x) => x.id === state.editingActivityId) || state.activities.find((x) => x.id === state.editingActivityId))
+    : null;
+
+  const splitsHtml = Array.from({ length: state.splitInputsCount }, (_, i) => {
+    const prefill = editing && editing.km_splits && editing.km_splits[i] != null
+      ? formatDureeInput(editing.km_splits[i])
+      : "";
+    return `
+      <label class="split-input-label">
+        Km ${i + 1}
+        <input type="text" class="km-split-input" data-index="${i}" placeholder="mm:ss" value="${prefill}" />
+      </label>
+    `;
+  }).join("");
 
   return `
     <header class="mobile-topbar">
-      <span class="mobile-title">Nouvelle course</span>
+      <span class="mobile-title">${editing ? "Modifier la course" : "Nouvelle course"}</span>
       <button class="topbar-cancel" id="btn-cancel">Annuler</button>
     </header>
 
@@ -2592,19 +2855,19 @@ function viewAddActivity() {
 
         <form id="activity-form" class="activity-form">
           <label>Date
-            <input type="date" id="f-date" value="${new Date().toISOString().slice(0, 10)}" required />
+            <input type="date" id="f-date" value="${editing ? editing.date : new Date().toISOString().slice(0, 10)}" required />
           </label>
 
           <label>Distance (km)
-            <input type="number" id="f-distance" step="0.01" min="0" placeholder="10.00" required />
+            <input type="number" id="f-distance" step="0.01" min="0" placeholder="10.00" value="${editing ? (editing.distance_m / 1000) : ""}" required />
           </label>
 
           <label>Durée de déplacement (mm:ss ou hh:mm:ss)
-            <input type="text" id="f-duree" placeholder="47:30" required />
+            <input type="text" id="f-duree" placeholder="47:30" value="${editing ? formatDureeInput(editing.duree_s) : ""}" required />
           </label>
 
           <label>Dénivelé positif (m)
-            <input type="number" id="f-denivele" step="1" min="0" placeholder="120" />
+            <input type="number" id="f-denivele" step="1" min="0" placeholder="120" value="${editing ? (editing.denivele_m || 0) : ""}" />
           </label>
 
           <div class="splits-section">
@@ -2613,7 +2876,7 @@ function viewAddActivity() {
           </div>
 
           <button type="submit" class="btn-primary" ${state.loading ? "disabled" : ""}>
-            ${state.loading ? "Enregistrement…" : "Enregistrer la course"}
+            ${state.loading ? "Enregistrement…" : editing ? "Enregistrer les modifications" : "Enregistrer la course"}
           </button>
         </form>
       </section>
@@ -2717,10 +2980,10 @@ function attachHandlers() {
   });
 
   const addBtn = document.getElementById("btn-add-activity");
-  if (addBtn) addBtn.addEventListener("click", () => setState({ route: "add-activity", error: null }));
+  if (addBtn) addBtn.addEventListener("click", () => setState({ route: "add-activity", error: null, editingActivityId: null, splitInputsCount: 0 }));
 
   const cancelBtn = document.getElementById("btn-cancel");
-  if (cancelBtn) cancelBtn.addEventListener("click", () => setState({ route: "dashboard", error: null }));
+  if (cancelBtn) cancelBtn.addEventListener("click", () => setState({ route: "dashboard", error: null, editingActivityId: null }));
 
   document.querySelectorAll(".account-subnav-btn").forEach((btn) => {
     btn.addEventListener("click", () => setState({ accountView: btn.dataset.view }));
@@ -2787,13 +3050,61 @@ function attachHandlers() {
   }
 
   document.querySelectorAll(".activity-delete-btn").forEach((btn) => {
-    btn.addEventListener("click", () => {
+    btn.addEventListener("click", (e) => {
+      e.stopPropagation();
       const id = btn.dataset.id;
       if (window.confirm("Supprimer cette course ? Cette action est irréversible.")) {
         deleteActivity(id);
       }
     });
   });
+
+  document.querySelectorAll(".activity-edit-btn").forEach((btn) => {
+    btn.addEventListener("click", (e) => {
+      e.stopPropagation();
+      openEditActivity(btn.dataset.id);
+    });
+  });
+
+  document.querySelectorAll(".activity-row-clickable").forEach((row) => {
+    row.addEventListener("click", () => {
+      setState({ activityDetailId: row.dataset.id });
+    });
+    row.addEventListener("keydown", (e) => {
+      if (e.key === "Enter" || e.key === " ") {
+        e.preventDefault();
+        setState({ activityDetailId: row.dataset.id });
+      }
+    });
+  });
+
+  const activityDetailOverlay = document.getElementById("activity-detail-overlay");
+  if (activityDetailOverlay) {
+    activityDetailOverlay.addEventListener("click", (e) => {
+      if (e.target === activityDetailOverlay) setState({ activityDetailId: null });
+    });
+  }
+
+  const activityDetailClose = document.getElementById("activity-detail-close");
+  if (activityDetailClose) {
+    activityDetailClose.addEventListener("click", () => setState({ activityDetailId: null }));
+  }
+
+  const activityDetailEdit = document.getElementById("activity-detail-edit");
+  if (activityDetailEdit) {
+    activityDetailEdit.addEventListener("click", () => openEditActivity(activityDetailEdit.dataset.id));
+  }
+
+  const activityDetailDelete = document.getElementById("activity-detail-delete");
+  if (activityDetailDelete) {
+    activityDetailDelete.addEventListener("click", () => {
+      const id = activityDetailDelete.dataset.id;
+      if (window.confirm("Supprimer cette course ? Cette action est irréversible.")) {
+        setState({ activityDetailId: null });
+        deleteActivity(id);
+      }
+    });
+  }
 
   const avatarTrigger = document.getElementById("avatar-trigger");
   const avatarInput = document.getElementById("f-avatar");
