@@ -2719,7 +2719,7 @@ function badgeCard(badge) {
   `;
 }
 
-function tierBadgeCard(badge) {
+function tierBadgeCard(badge, type, index) {
   const tierClass = badge.tier ? `tier-${badge.tier.key}` : "";
   const nextInfo = badge.next
     ? `<span class="badge-next">encore ${badge.next.threshold - badge.achievedCount} pour ${badge.next.label}</span>`
@@ -2728,7 +2728,7 @@ function tierBadgeCard(badge) {
       : "";
 
   return `
-    <div class="badge-card ${badge.unlocked ? "is-unlocked" : "is-locked"} ${tierClass}">
+    <div class="badge-card ${badge.unlocked ? "is-unlocked" : "is-locked"} ${tierClass}" data-badge-type="${type}" data-badge-index="${index}" role="button" tabindex="0" aria-label="Détail du badge ${badge.label}">
       <span class="badge-icon">${badge.tier ? badge.tier.icon : badge.icon}</span>
       <span class="badge-label">${badge.label}</span>
       ${badge.unlocked ? `
@@ -2750,14 +2750,89 @@ function badgesSection() {
     </section>
     <section class="panel">
       <h2>Badges de distance</h2>
-      <p class="muted">Débloqués dès qu'une activité couvre la distance indiquée. Répète la performance pour monter les paliers : Bronze (×1), Argent (×5), Or (×15), Platine (×30).</p>
-      <div class="badge-grid">${distanceBadges.map(tierBadgeCard).join("")}</div>
+      <p class="muted">Débloqués dès qu'une activité couvre la distance indiquée. Chaque distance a ses propres paliers Bronze / Argent / Or / Platine — les répéter compte plus pour un marathon que pour un 5 km. Touche un badge pour voir le détail et les paliers de vitesse.</p>
+      <div class="badge-grid">${distanceBadges.map((b, i) => tierBadgeCard(b, "distance", i)).join("")}</div>
     </section>
     <section class="panel">
       <h2>Badges de durée</h2>
-      <p class="muted">Débloqués dès qu'une activité dure au moins le temps indiqué. Mêmes paliers que les badges de distance.</p>
-      <div class="badge-grid">${durationBadges.map(tierBadgeCard).join("")}</div>
+      <p class="muted">Débloqués dès qu'une activité dure au moins le temps indiqué, avec ses propres paliers de répétition. Touche un badge pour voir le détail.</p>
+      <div class="badge-grid">${durationBadges.map((b, i) => tierBadgeCard(b, "duration", i)).join("")}</div>
     </section>
+    ${state.badgeModal ? badgeDetailModal() : ""}
+  `;
+}
+
+// ---------- Modale de détail d'un badge à paliers ----------
+
+function badgeDetailModal() {
+  const { type, index } = state.badgeModal;
+  const source = type === "distance" ? DISTANCE_BADGES : DURATION_BADGES;
+  const def = source[index];
+  if (!def) return "";
+
+  const { distanceBadges, durationBadges } = computeBadges(state.allActivities);
+  const badge = (type === "distance" ? distanceBadges : durationBadges)[index];
+
+  const tierRows = def.tierThresholds.map((threshold, i) => {
+    const meta = TIER_META[i];
+    const reached = badge.achievedCount >= threshold;
+    const remaining = reached ? "" : `<span class="tier-row-remaining">encore ${threshold - badge.achievedCount}</span>`;
+    return `
+      <div class="tier-row ${reached ? "is-reached" : ""}">
+        <span class="tier-row-icon">${meta.icon}</span>
+        <span class="tier-row-label">${meta.label}</span>
+        <span class="tier-row-count">×${threshold}</span>
+        ${reached ? `<span class="tier-row-check">✓ atteint</span>` : remaining}
+      </div>
+    `;
+  }).join("");
+
+  const sortedDates = [...badge.dates].sort((a, b) =>
+    state.badgeModalSort === "desc" ? (a < b ? 1 : -1) : (a < b ? -1 : 1)
+  );
+  const datesHtml = sortedDates.length
+    ? `<ul class="badge-dates-list">${sortedDates.map((d) => `<li>${formatDateFr(d)}</li>`).join("")}</ul>`
+    : `<p class="muted">Pas encore obtenu.</p>`;
+
+  const speedHtml = type === "distance" ? (() => {
+    const speedTiers = computeSpeedBadges(state.allActivities, def.meters);
+    if (!speedTiers.length) return "";
+    const rows = speedTiers.map((s) => `
+      <div class="tier-row ${s.unlocked ? "is-reached" : ""}">
+        <span class="tier-row-icon">⚡</span>
+        <span class="tier-row-label">${s.label}</span>
+        <span class="tier-row-count">×${s.achievedCount}</span>
+        ${s.unlocked ? `<span class="tier-row-check">✓ ${formatDateFr(s.bestDate)}</span>` : ""}
+      </div>
+    `).join("");
+    return `
+      <div class="badge-speed-section">
+        <h4>Paliers de vitesse — ${def.label}</h4>
+        <p class="muted">Temps réalistes à battre sur cette distance.</p>
+        <div class="badge-tier-ladder">${rows}</div>
+      </div>
+    `;
+  })() : "";
+
+  return `
+    <div class="modal-overlay" id="badge-detail-overlay">
+      <div class="modal-card">
+        <button class="modal-close" id="badge-detail-close" aria-label="Fermer">✕</button>
+        <div class="modal-badge-header">
+          <span class="modal-badge-icon">${badge.tier ? badge.tier.icon : def.icon}</span>
+          <h3>${def.label}</h3>
+        </div>
+        <div class="badge-tier-ladder">${tierRows}</div>
+        <div class="badge-dates-header">
+          <h4>Dates d'obtention (×${badge.achievedCount})</h4>
+          <button class="btn-chip-small" id="badge-detail-sort">
+            ${state.badgeModalSort === "desc" ? "Plus récent d'abord" : "Plus ancien d'abord"}
+          </button>
+        </div>
+        ${datesHtml}
+        ${speedHtml}
+      </div>
+    </div>
   `;
 }
 
@@ -3256,6 +3331,39 @@ function attachHandlers() {
           <input type="text" class="km-split-input" data-index="${i}" placeholder="mm:ss" />
         </label>
       `).join("");
+    });
+  }
+
+  document.querySelectorAll(".badge-card[data-badge-type]").forEach((card) => {
+    const open = () => setState({
+      badgeModal: { type: card.dataset.badgeType, index: Number(card.dataset.badgeIndex) },
+      badgeModalSort: "desc",
+    });
+    card.addEventListener("click", open);
+    card.addEventListener("keydown", (e) => {
+      if (e.key === "Enter" || e.key === " ") {
+        e.preventDefault();
+        open();
+      }
+    });
+  });
+
+  const badgeDetailOverlay = document.getElementById("badge-detail-overlay");
+  if (badgeDetailOverlay) {
+    badgeDetailOverlay.addEventListener("click", (e) => {
+      if (e.target === badgeDetailOverlay) setState({ badgeModal: null });
+    });
+  }
+
+  const badgeDetailClose = document.getElementById("badge-detail-close");
+  if (badgeDetailClose) {
+    badgeDetailClose.addEventListener("click", () => setState({ badgeModal: null }));
+  }
+
+  const badgeDetailSort = document.getElementById("badge-detail-sort");
+  if (badgeDetailSort) {
+    badgeDetailSort.addEventListener("click", () => {
+      setState({ badgeModalSort: state.badgeModalSort === "desc" ? "asc" : "desc" });
     });
   }
 
