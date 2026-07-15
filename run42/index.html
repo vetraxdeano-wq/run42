@@ -1960,6 +1960,21 @@ async function deleteActivity(activityId) {
       .eq("activity_id", activityId);
     const affectedLabels = (linkedPRs || []).map((p) => p.distance_label);
 
+    // "personal_records" a une clé étrangère vers "activities" (activity_id).
+    // Tant qu'un PR pointe encore vers cette activité, Postgres refuse de la
+    // supprimer (violation de contrainte de clé étrangère) : il faut donc
+    // détacher ces PR d'abord (activity_id → null), supprimer l'activité,
+    // puis recalculer ces PR pour qu'ils repointent vers la meilleure
+    // activité restante (ou soient retirés s'il n'en reste aucune).
+    if (affectedLabels.length) {
+      const { error: detachError } = await supabase
+        .from("personal_records")
+        .update({ activity_id: null })
+        .eq("user_id", userId)
+        .eq("activity_id", activityId);
+      if (detachError) throw detachError;
+    }
+
     // On utilise { count: "exact" } plutôt qu'un .select() après coup : un
     // .select() sur une ligne qui vient d'être supprimée dépend d'une policy
     // RLS "SELECT" pour pouvoir la renvoyer, et remonte un tableau vide si
