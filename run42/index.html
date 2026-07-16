@@ -535,6 +535,14 @@ button {
 
 .activity-date { color: rgba(238,241,232,0.6); }
 
+.activity-title {
+  font-family: var(--font-body);
+  font-size: 13.5px;
+  font-weight: 600;
+  color: var(--paper);
+  padding: 8px 0 0 2px;
+}
+
 .activity-delete-btn, .activity-edit-btn {
   background: none;
   border: none;
@@ -580,6 +588,18 @@ button {
   color: var(--paper);
   font-size: 15px;
   font-family: var(--font-mono);
+}
+
+.activity-form textarea {
+  padding: 10px 12px;
+  border-radius: 10px;
+  border: 1px solid rgba(238,241,232,0.15);
+  background: var(--ink);
+  color: var(--paper);
+  font-size: 14px;
+  font-family: var(--font-body);
+  resize: vertical;
+  min-height: 64px;
 }
 
 .splits-section { border-top: 1px solid rgba(139,195,74,0.2); padding-top: 14px; }
@@ -1363,6 +1383,29 @@ button {
   color: rgba(238,241,232,0.85);
 }
 
+.activity-detail-description {
+  margin-top: 18px;
+  padding-top: 14px;
+  border-top: 1px solid rgba(139,195,74,0.25);
+}
+
+.activity-detail-description h4 {
+  font-family: var(--font-display);
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+  font-size: 13px;
+  margin: 0 0 8px;
+  color: rgba(238,241,232,0.85);
+}
+
+.activity-detail-description p {
+  margin: 0;
+  font-size: 13.5px;
+  line-height: 1.5;
+  color: rgba(238,241,232,0.8);
+  white-space: pre-wrap;
+}
+
 .split-chip-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(64px, 1fr));
@@ -1920,10 +1963,12 @@ async function saveActivity(formData) {
       .from("activities")
       .insert({
         user_id: userId,
+        titre: formData.titre || null,
         date: formData.date,
         distance_m: distanceM,
         duree_s: dureeS,
         denivele_m: formData.deniveleM || 0,
+        description: formData.description || null,
         allure_moyenne: allureMoyenne,
         km_splits: kmSplits.length ? kmSplits : null,
         source: "manuel",
@@ -2324,10 +2369,12 @@ async function updateActivity(activityId, formData) {
     const { error } = await supabase
       .from("activities")
       .update({
+        titre: formData.titre || null,
         date: formData.date,
         distance_m: distanceM,
         duree_s: dureeS,
         denivele_m: formData.deniveleM || 0,
+        description: formData.description || null,
         allure_moyenne: allureMoyenne,
         km_splits: kmSplits.length ? kmSplits : null,
       })
@@ -3001,8 +3048,10 @@ function activityRow(a) {
   const prBadge = a.pr_labels && a.pr_labels.length
     ? `<div class="activity-pr-badge">🏆 Record personnel — ${a.pr_labels.join(", ")}</div>`
     : "";
+  const titleHtml = a.titre ? `<div class="activity-title">${a.titre}</div>` : "";
   return `
     <div class="activity-row-wrap activity-row-clickable" data-id="${a.id}" role="button" tabindex="0">
+      ${titleHtml}
       <div class="activity-row">
         <span class="activity-date">${dateFormatted}</span>
         <span>${km} km</span>
@@ -3040,12 +3089,22 @@ function activityDetailModal() {
     `
     : "";
 
+  const descriptionHtml = a.description
+    ? `
+      <div class="activity-detail-description">
+        <h4>Notes</h4>
+        <p>${a.description}</p>
+      </div>
+    `
+    : "";
+
   return `
     <div class="modal-overlay" id="activity-detail-overlay">
       <div class="modal-card">
         <button class="modal-close" id="activity-detail-close" aria-label="Fermer">✕</button>
         <div class="modal-activity-header">
-          <h3>Course du ${dateFormatted}</h3>
+          <h3>${a.titre ? a.titre : `Course du ${dateFormatted}`}</h3>
+          ${a.titre ? `<p class="muted activity-detail-subdate">${dateFormatted}</p>` : ""}
           ${prBadge}
         </div>
         <div class="activity-detail-stats">
@@ -3066,6 +3125,7 @@ function activityDetailModal() {
             <span class="stat-value">${a.denivele_m || 0} m</span>
           </div>
         </div>
+        ${descriptionHtml}
         ${splitsHtml}
         <div class="modal-actions">
           <button class="btn-chip" id="activity-detail-edit" data-id="${a.id}">Modifier</button>
@@ -3141,15 +3201,27 @@ function recordForm() {
 function tabProgramme() {
   const profil = getProfil();
 
+  const profilSection = `
+    <section class="panel" id="profil-section">
+      <div class="panel-header-row">
+        <h2>Personnalisation</h2>
+        ${profil && !state.profilEditing ? `<button class="btn-chip" id="btn-edit-profil">Modifier</button>` : ""}
+      </div>
+      ${
+        profil && !state.profilEditing
+          ? `<p class="muted">${describeProfil(profil)}</p>`
+          : profilForm(profil)
+      }
+    </section>
+  `;
+
   if (!profil) {
     return `
       <section class="panel">
         <h2>Programme</h2>
-        <p class="muted">Tu n'as pas encore configuré ton profil. Rends-toi dans <strong>Mon compte</strong> pour indiquer ton niveau, ton objectif et tes disponibilités : ton programme personnalisé s'affichera ici.</p>
+        <p class="muted">Configure ton profil ci-dessous pour indiquer ton niveau, ton objectif et tes disponibilités : ton programme personnalisé s'affichera ici.</p>
       </section>
-      <section class="panel">
-        <button class="btn-secondary" id="btn-goto-account-profil">Configurer mon profil</button>
-      </section>
+      ${profilSection}
     `;
   }
 
@@ -3164,12 +3236,9 @@ function tabProgramme() {
   return `
     <section class="panel">
       <h2>Ton programme</h2>
-      <p class="muted">${describeProfil(profil)}</p>
       <div class="program-list">${rowsHtml}</div>
     </section>
-    <section class="panel">
-      <button class="btn-secondary" id="btn-goto-account-profil">Modifier mon profil</button>
-    </section>
+    ${profilSection}
   `;
 }
 
@@ -3367,7 +3436,6 @@ function tabAccount() {
   const pseudo = getPseudo();
   const counts = computeCounts(state.allActivities);
   const streak = computeStreak(state.allActivities.map((a) => a.date));
-  const profil = getProfil();
 
   const pseudoBlockHtml = state.pseudoEditing
     ? `
@@ -3447,20 +3515,6 @@ function tabAccount() {
       ${monthlyChart(computeMonthlyDistances(state.allActivities, new Date().getFullYear()), monthChartIndices())}
       ${calendarNavHeader()}
       ${monthCalendar(state.allActivities, state.calendarYear, state.calendarMonth)}
-    </section>
-
-    <section class="panel" id="profil-section">
-      <div class="panel-header-row">
-        <h2>Personnalisation</h2>
-        ${profil && !state.profilEditing ? `<button class="btn-chip" id="btn-edit-profil">Modifier</button>` : ""}
-      </div>
-      ${
-        profil && !state.profilEditing
-          ? `
-            <p class="muted">${describeProfil(profil)}</p>
-          `
-          : profilForm(profil)
-      }
     </section>
 
     <section class="panel">
@@ -3680,6 +3734,10 @@ function viewAddActivity() {
         ${state.error ? `<p class="error-msg">${state.error}</p>` : ""}
 
         <form id="activity-form" class="activity-form">
+          <label>Titre (optionnel)
+            <input type="text" id="f-titre" maxlength="80" placeholder="Ex. Sortie longue au parc" value="${editing ? (editing.titre || "") : ""}" />
+          </label>
+
           <label>Date
             <input type="date" id="f-date" value="${editing ? editing.date : new Date().toISOString().slice(0, 10)}" required />
           </label>
@@ -3694,6 +3752,10 @@ function viewAddActivity() {
 
           <label>Dénivelé positif (m)
             <input type="number" id="f-denivele" step="1" min="0" placeholder="120" value="${editing ? (editing.denivele_m || 0) : ""}" />
+          </label>
+
+          <label>Description (optionnel)
+            <textarea id="f-description" rows="3" maxlength="500" placeholder="Sensations, météo, parcours…">${editing ? (editing.description || "") : ""}</textarea>
           </label>
 
           <div class="splits-section">
@@ -3918,13 +3980,6 @@ function attachHandlers() {
     });
   }
 
-  const gotoAccountProfilBtn = document.getElementById("btn-goto-account-profil");
-  if (gotoAccountProfilBtn) {
-    gotoAccountProfilBtn.addEventListener("click", () =>
-      setState({ tab: "account", profilEditing: true, error: null })
-    );
-  }
-
   const editGoalBtn = document.getElementById("btn-edit-goal");
   if (editGoalBtn) editGoalBtn.addEventListener("click", () => setState({ goalEditing: true, error: null }));
 
@@ -4125,10 +4180,12 @@ function attachHandlers() {
       );
 
       const payload = {
+        titre: document.getElementById("f-titre").value.trim(),
         date: document.getElementById("f-date").value,
         distanceKm: parseFloat(document.getElementById("f-distance").value),
         dureeS,
         deniveleM: parseFloat(document.getElementById("f-denivele").value) || 0,
+        description: document.getElementById("f-description").value.trim(),
         kmSplits,
       };
 
