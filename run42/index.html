@@ -589,20 +589,80 @@ button {
   margin-bottom: 6px;
 }
 
-.activity-row {
+.activity-stats {
   display: flex;
   flex-wrap: wrap;
-  align-items: center;
-  gap: 14px;
+  align-items: flex-end;
+  gap: 20px;
+}
+
+.stat-block {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.stat-block.stat-primary {
+  flex-direction: row;
+  align-items: baseline;
+  gap: 4px;
+}
+
+.stat-primary .stat-value {
+  font-family: var(--font-display);
+  font-size: 26px;
+  font-weight: 700;
+  line-height: 1;
+  color: var(--paper);
+}
+
+.stat-primary .stat-unit {
   font-family: var(--font-mono);
-  font-size: 14px;
+  font-size: 13px;
+  color: rgba(238,241,232,0.55);
+}
+
+.stat-value-sm {
+  font-family: var(--font-mono);
+  font-size: 15px;
+  font-weight: 600;
+  line-height: 1.1;
+}
+
+.stat-block.stat-accent .stat-value-sm { color: var(--signal); }
+.stat-block:not(.stat-accent) .stat-value-sm { color: var(--paper); }
+
+.stat-label-sm {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: rgba(238,241,232,0.4);
 }
 
 .activity-pr-badge {
-  font-family: var(--font-mono);
-  font-size: 12px;
-  color: var(--signal);
-  padding-top: 8px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 10px;
+  font-family: var(--font-body);
+  font-size: 12.5px;
+  font-weight: 700;
+  color: #241a04;
+  background: linear-gradient(135deg, #ffe27a 0%, #f0b93a 100%);
+  border-radius: 8px;
+  padding: 6px 11px;
+  box-shadow: 0 3px 10px -2px rgba(240,185,58,0.55);
+}
+
+.dossard-card.has-pr {
+  border-color: rgba(240,185,58,0.6);
+  box-shadow: 0 0 0 1px rgba(240,185,58,0.12), 0 8px 20px -10px rgba(240,185,58,0.35);
+}
+
+.dossard-card.has-pr::before,
+.dossard-card.has-pr::after {
+  background-image: radial-gradient(circle, rgba(240,185,58,0.45) 1.5px, transparent 1.6px);
 }
 
 .activity-title {
@@ -615,14 +675,15 @@ button {
 .activity-type-badge {
   font-family: var(--font-mono);
   font-size: 10.5px;
-  font-weight: 600;
+  font-weight: 700;
   letter-spacing: 0.03em;
   text-transform: uppercase;
-  color: var(--ink);
-  background: var(--gradient-accent);
+  color: #fff;
+  background: var(--type-color, var(--moss));
   border-radius: 999px;
   padding: 3px 9px;
   white-space: nowrap;
+  box-shadow: 0 1px 5px rgba(0,0,0,0.3);
 }
 
 .activity-fractionne-info {
@@ -1221,6 +1282,10 @@ button {
   box-shadow: 0 -4px 24px rgba(0,0,0,0.4);
 }
 
+.modal-card.has-pr {
+  box-shadow: 0 -4px 24px rgba(0,0,0,0.4), 0 0 0 1px rgba(240,185,58,0.35) inset;
+}
+
 @media (min-width: 561px) {
   .modal-card { border-radius: 14px; }
 }
@@ -1461,6 +1526,18 @@ button {
 
 .activity-detail-stat .stat-label { font-size: 11px; color: rgba(238,241,232,0.5); }
 .activity-detail-stat .stat-value { font-family: var(--font-mono); font-size: 16px; }
+
+.activity-detail-stat.stat-primary {
+  background: rgba(139,195,74,0.12);
+  border-color: rgba(139,195,74,0.3);
+}
+.activity-detail-stat.stat-primary .stat-value { font-family: var(--font-display); font-size: 21px; font-weight: 700; color: var(--paper); }
+
+.activity-detail-stat.stat-accent {
+  background: rgba(182,217,40,0.1);
+  border-color: rgba(182,217,40,0.28);
+}
+.activity-detail-stat.stat-accent .stat-value { color: var(--signal); font-weight: 700; }
 
 .activity-detail-splits {
   margin-top: 18px;
@@ -1868,6 +1945,20 @@ const ACTIVITY_TYPES = [
   "Compétition",
   "Sortie libre",
 ];
+
+const ACTIVITY_TYPE_COLORS = {
+  "Endurance Fondamentale": "#57b02e",
+  "Fractionné": "#d9483a",
+  "Sortie longue": "#3b82c4",
+  "Récupération": "#2fb6a8",
+  "Seuil / Tempo": "#9b59d0",
+  "Compétition": "#d1a327",
+  "Sortie libre": "#6b7280",
+};
+
+function activityTypeColor(type) {
+  return ACTIVITY_TYPE_COLORS[type] || "#8bc34a";
+}
 
 // Nom d'affichage par défaut d'une course sans titre : "Course du 12 juin"
 function displayTitre(a) {
@@ -3182,14 +3273,15 @@ function activityRow(a) {
   const allure = formatTemps(a.allure_moyenne) + "/km";
   const jour = new Date(a.date + "T00:00:00").toLocaleDateString("fr-FR", { day: "numeric" });
   const mois = new Date(a.date + "T00:00:00").toLocaleDateString("fr-FR", { month: "short" }).replace(".", "");
+  const isPR = !!(a.pr_labels && a.pr_labels.length);
   // pr_labels est figé au moment de l'enregistrement de la course : ce badge
   // reste affiché même si un record plus récent a depuis écrasé celui-ci
   // dans personal_records.
-  const prBadge = a.pr_labels && a.pr_labels.length
-    ? `<div class="activity-pr-badge">🏆 Record personnel — ${a.pr_labels.join(", ")}</div>`
+  const prBadge = isPR
+    ? `<div class="activity-pr-badge">🏆 <span>Record personnel — ${a.pr_labels.join(", ")}</span></div>`
     : "";
   const typeBadge = a.type_activite
-    ? `<span class="activity-type-badge">${a.type_activite}</span>`
+    ? `<span class="activity-type-badge" style="--type-color: ${activityTypeColor(a.type_activite)}">${a.type_activite}</span>`
     : "";
   const fractionneHtml = a.type_activite === "Fractionné" && (a.fractionne_effort_s || a.fractionne_repos_s)
     ? `<div class="activity-fractionne-info">
@@ -3197,7 +3289,7 @@ function activityRow(a) {
       </div>`
     : "";
   return `
-    <div class="dossard-card activity-row-clickable" data-id="${a.id}" role="button" tabindex="0">
+    <div class="dossard-card activity-row-clickable${isPR ? " has-pr" : ""}" data-id="${a.id}" role="button" tabindex="0">
       <div class="dossard-stub">
         <span class="dossard-day">${jour}</span>
         <span class="dossard-month">${mois}</span>
@@ -3207,10 +3299,18 @@ function activityRow(a) {
           <span class="activity-title">${displayTitre(a)}</span>
           ${typeBadge}
         </div>
-        <div class="activity-row">
-          <span>${km} km</span>
-          <span>${formatTemps(a.duree_s)}</span>
-          <span class="muted">${allure}</span>
+        <div class="activity-stats">
+          <div class="stat-block stat-primary">
+            <span class="stat-value">${km}</span><span class="stat-unit">km</span>
+          </div>
+          <div class="stat-block stat-accent">
+            <span class="stat-value-sm">${allure}</span>
+            <span class="stat-label-sm">allure</span>
+          </div>
+          <div class="stat-block">
+            <span class="stat-value-sm">${formatTemps(a.duree_s)}</span>
+            <span class="stat-label-sm">durée</span>
+          </div>
         </div>
         ${fractionneHtml}
         ${prBadge}
@@ -3232,12 +3332,13 @@ function activityDetailModal() {
   const allure = formatTemps(a.allure_moyenne) + "/km";
   const dateFormatted = formatDateFr(a.date);
 
-  const prBadge = a.pr_labels && a.pr_labels.length
-    ? `<div class="activity-pr-badge">🏆 Record personnel — ${a.pr_labels.join(", ")}</div>`
+  const isPR = !!(a.pr_labels && a.pr_labels.length);
+  const prBadge = isPR
+    ? `<div class="activity-pr-badge">🏆 <span>Record personnel — ${a.pr_labels.join(", ")}</span></div>`
     : "";
 
   const typeBadge = a.type_activite
-    ? `<span class="activity-type-badge">${a.type_activite}</span>`
+    ? `<span class="activity-type-badge" style="--type-color: ${activityTypeColor(a.type_activite)}">${a.type_activite}</span>`
     : "";
 
   const fractionneHtml = a.type_activite === "Fractionné" && (a.fractionne_effort_s || a.fractionne_repos_s)
@@ -3271,7 +3372,7 @@ function activityDetailModal() {
 
   return `
     <div class="modal-overlay" id="activity-detail-overlay">
-      <div class="modal-card">
+      <div class="modal-card${isPR ? " has-pr" : ""}">
         <button class="modal-close" id="activity-detail-close" aria-label="Fermer">✕</button>
         <div class="modal-activity-header">
           <h3>${displayTitre(a)}</h3>
@@ -3280,17 +3381,17 @@ function activityDetailModal() {
           ${prBadge}
         </div>
         <div class="activity-detail-stats">
-          <div class="activity-detail-stat">
+          <div class="activity-detail-stat stat-primary">
             <span class="stat-label">Distance</span>
             <span class="stat-value">${km} km</span>
+          </div>
+          <div class="activity-detail-stat stat-accent">
+            <span class="stat-label">Allure moyenne</span>
+            <span class="stat-value">${allure}</span>
           </div>
           <div class="activity-detail-stat">
             <span class="stat-label">Durée</span>
             <span class="stat-value">${formatTemps(a.duree_s)}</span>
-          </div>
-          <div class="activity-detail-stat">
-            <span class="stat-label">Allure moyenne</span>
-            <span class="stat-value">${allure}</span>
           </div>
           <div class="activity-detail-stat">
             <span class="stat-label">Dénivelé positif</span>
