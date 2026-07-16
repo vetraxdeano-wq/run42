@@ -1420,6 +1420,131 @@ button {
   outline: none;
 }
 
+/* ---------- Prédictions de chrono ---------- */
+
+.assiduite-strip {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  padding: 12px 14px;
+  border-radius: 12px;
+  background: rgba(238,241,232,0.04);
+  border: 1px solid rgba(238,241,232,0.08);
+  margin: 12px 0 4px;
+}
+
+.assiduite-label {
+  font-family: var(--font-display);
+  font-size: 13px;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: rgba(238,241,232,0.9);
+}
+
+.assiduite-strip.tone-positive .assiduite-label { color: var(--moss); }
+.assiduite-strip.tone-negative .assiduite-label { color: var(--danger); }
+
+.assiduite-detail {
+  font-size: 12px;
+  color: rgba(238,241,232,0.55);
+  line-height: 1.4;
+}
+
+.prediction-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
+  gap: 14px;
+  margin-top: 14px;
+}
+
+.prediction-card {
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+  background: var(--ink-soft);
+  border: 1px solid rgba(238,241,232,0.1);
+  border-radius: 14px;
+  padding: 16px;
+  box-shadow: 0 6px 18px -10px rgba(0,0,0,0.5);
+}
+
+.prediction-card.is-empty { opacity: 0.5; gap: 4px; }
+
+.prediction-card.tier-faible { border-color: rgba(227,91,74,0.3); }
+.prediction-card.tier-correcte { border-color: rgba(238,241,232,0.14); }
+.prediction-card.tier-bonne { border-color: rgba(139,195,74,0.4); }
+.prediction-card.tier-excellente {
+  border-color: var(--signal);
+  box-shadow: 0 0 0 1px rgba(182,217,40,0.25), 0 6px 18px -10px rgba(0,0,0,0.5);
+}
+
+.prediction-card-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.prediction-distance {
+  font-family: var(--font-display);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  font-size: 14px;
+  color: var(--paper);
+}
+
+.prediction-confidence {
+  font-size: 9.5px;
+  font-family: var(--font-mono);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: rgba(238,241,232,0.45);
+  text-align: right;
+}
+
+.tier-excellente .prediction-confidence { color: var(--signal); }
+.tier-bonne .prediction-confidence { color: var(--moss); }
+.tier-faible .prediction-confidence { color: var(--danger); }
+
+.prediction-time-row { display: flex; align-items: baseline; }
+
+.prediction-time {
+  font-family: var(--font-mono);
+  font-size: 27px;
+  font-weight: 700;
+  color: var(--paper);
+}
+
+.prediction-delta {
+  align-self: flex-start;
+  font-family: var(--font-mono);
+  font-size: 11.5px;
+  font-weight: 600;
+  padding: 3px 9px;
+  border-radius: 999px;
+}
+
+.prediction-delta.is-faster { background: rgba(139,195,74,0.18); color: var(--moss); }
+.prediction-delta.is-slower { background: rgba(227,91,74,0.18); color: var(--danger); }
+.prediction-delta.is-stable { background: rgba(238,241,232,0.07); color: rgba(238,241,232,0.5); }
+
+.prediction-spark-wrap { margin-top: 2px; }
+
+.prediction-spark { width: 100%; height: 54px; display: block; }
+
+.prediction-spark-axis {
+  display: flex;
+  justify-content: space-between;
+  font-size: 9.5px;
+  font-family: var(--font-mono);
+  color: rgba(238,241,232,0.4);
+  margin-top: 2px;
+}
+
+.prediction-basis { font-size: 11px; margin: 0; }
+
+.prediction-empty-text { font-size: 12.5px; margin: 4px 0 0; }
+
 /* ---------- Modal de détail badge ---------- */
 
 .modal-overlay {
@@ -3310,6 +3435,285 @@ function detectBadgeUnlocks(activitiesBefore, activitiesAfter) {
   return messages;
 }
 
+// ============================================================
+// Prédictions de chrono (VDOT + Riegel, pondérées assiduité)
+// ============================================================
+//
+// Principe : chaque activité valide (distance + durée connues) devient un ou
+// plusieurs "points de performance". Pour chaque point, on calcule un VDOT
+// (indice de forme cardio, méthode Daniels & Gilbert) qui permet ensuite de
+// projeter un temps théorique sur n'importe quelle distance de référence.
+// Les points sont pondérés par : le type de séance (une compétition vaut
+// plus qu'une récup), leur ancienneté (les perfs récentes comptent plus,
+// décroissance exponentielle) et l'écart entre la distance source et la
+// distance cible (extrapoler un 10K vers un semi est plus fiable qu'un 1K
+// vers un marathon). Un score d'assiduité (régularité + tendance de volume
+// sur 8 semaines) ajuste ensuite légèrement le résultat final.
+
+// Fiabilité relative de chaque type de séance comme indicateur d'allure de course
+const TYPE_RELIABILITY = {
+  "Compétition": 1.00,
+  "Seuil / Tempo": 0.85,
+  "Fractionné": 0.60,
+  "Sortie longue": 0.55,
+  "Sortie libre": 0.40,
+  "Endurance Fondamentale": 0.35,
+  "Récupération": 0.15,
+};
+const TYPE_RELIABILITY_DEFAULT = 0.30;
+
+const PREDICTION_RECENCY_HALFLIFE_DAYS = 45; // une perf "pèse" moitié moins tous les ~45 jours
+const PREDICTION_MIN_DISTANCE_M = 800;       // sous ce seuil, une sortie n'est pas un point fiable
+
+// ---------- Modèle physiologique (Daniels & Gilbert) ----------
+
+function vo2FromVelocity(vMetersPerMin) {
+  return -4.60 + 0.182258 * vMetersPerMin + 0.000104 * vMetersPerMin * vMetersPerMin;
+}
+
+function percentVo2Max(tMinutes) {
+  return 0.8 + 0.1894393 * Math.exp(-0.012778 * tMinutes) + 0.2989558 * Math.exp(-0.1932605 * tMinutes);
+}
+
+// VDOT à partir d'une performance réelle (distance en m, temps en s)
+function vdotFromPerformance(distanceM, timeS) {
+  const tMin = timeS / 60;
+  if (tMin <= 0) return 0;
+  const v = distanceM / tMin;
+  return vo2FromVelocity(v) / percentVo2Max(tMin);
+}
+
+// Temps théorique (s) pour parcourir distanceM avec un VDOT donné, par
+// bissection (la relation VDOT ↔ temps n'a pas d'inverse analytique simple).
+function predictTimeFromVdot(vdot, distanceM) {
+  let lo = distanceM * 0.12; // ~2:00/km — borne basse volontairement irréaliste (garde-fou)
+  let hi = distanceM * 0.75; // ~12:30/km — borne haute (garde-fou)
+  for (let i = 0; i < 40; i++) {
+    const mid = (lo + hi) / 2;
+    const impliedVdot = vdotFromPerformance(distanceM, mid);
+    if (impliedVdot > vdot) lo = mid; else hi = mid;
+  }
+  return (lo + hi) / 2;
+}
+
+// ---------- Constitution des points de performance ----------
+
+function predictionTypeWeight(type) {
+  return TYPE_RELIABILITY[type] ?? TYPE_RELIABILITY_DEFAULT;
+}
+
+// Un "point" par effort exploitable : l'activité entière, plus, si des
+// splits km existent, les meilleurs segments qu'on peut en extraire (utile
+// pour capter la vraie vitesse de course dans un Fractionné ou une sortie
+// longue avec accélérations, indépendamment des temps de repos inclus dans
+// la durée totale).
+function collectPredictionPoints(activities) {
+  const points = [];
+  for (const a of activities || []) {
+    if (!a.distance_m || !a.duree_s || a.distance_m < PREDICTION_MIN_DISTANCE_M) continue;
+    const type = a.type_activite || null;
+    const baseWeight = predictionTypeWeight(type);
+
+    points.push({
+      distanceM: a.distance_m,
+      timeS: a.duree_s,
+      date: a.date,
+      type,
+      weight: baseWeight,
+      source: "total",
+      activityId: a.id,
+    });
+
+    if (a.km_splits && a.km_splits.length >= 3) {
+      for (const eff of computeBestEfforts(a.distance_m, a.duree_s, a.km_splits)) {
+        if (eff.source !== "splits") continue;
+        points.push({
+          distanceM: DISTANCE_METERS[eff.distance_label],
+          timeS: eff.temps_s,
+          date: a.date,
+          type,
+          // Un segment extrait des splits est un signal plus "pur" qu'une
+          // moyenne sur toute la sortie (il exclut la récup) : légère prime.
+          weight: Math.min(1, baseWeight + 0.15),
+          source: "splits",
+          activityId: a.id,
+        });
+      }
+    }
+  }
+  return points;
+}
+
+function daysBetween(dateA, dateB) {
+  const a = new Date(dateA + "T00:00:00");
+  const b = new Date(dateB + "T00:00:00");
+  return Math.max(0, Math.round((b - a) / 86400000));
+}
+
+function recencyWeight(pointDate, referenceDate) {
+  const age = daysBetween(pointDate, referenceDate);
+  return Math.pow(0.5, age / PREDICTION_RECENCY_HALFLIFE_DAYS);
+}
+
+// Pénalise (légèrement) l'extrapolation entre deux distances trop éloignées
+function distanceClosenessWeight(sourceM, targetM) {
+  const ratio = Math.abs(Math.log(targetM / sourceM));
+  return 1 / (1 + 0.6 * ratio);
+}
+
+// ---------- Assiduité ----------
+
+const ASSIDUITE_WINDOW_WEEKS = 8;
+
+// Régularité (proportion de semaines actives sur 8 semaines) + tendance de
+// volume (4 dernières semaines vs 4 précédentes), combinées en un score
+// entre -1 (irrégulier / net recul) et +1 (très régulier / en progression).
+function computeAssiduite(activities, referenceDate) {
+  const refMonday = mondayKey(referenceDate);
+  const weekKeys = [];
+  for (let i = 0; i < ASSIDUITE_WINDOW_WEEKS; i++) weekKeys.push(addDaysKey(refMonday, -7 * i));
+
+  const perWeek = Object.fromEntries(weekKeys.map((k) => [k, { count: 0, km: 0 }]));
+  for (const a of activities || []) {
+    if (!a.date || a.date > referenceDate) continue;
+    const wk = mondayKey(a.date + "T00:00:00");
+    if (perWeek[wk]) {
+      perWeek[wk].count += 1;
+      perWeek[wk].km += (a.distance_m || 0) / 1000;
+    }
+  }
+
+  const activeWeeksCount = weekKeys.filter((k) => perWeek[k].count > 0).length;
+  const regularityRatio = activeWeeksCount / ASSIDUITE_WINDOW_WEEKS;
+
+  const recent4 = weekKeys.slice(0, 4).reduce((s, k) => s + perWeek[k].km, 0);
+  const prior4 = weekKeys.slice(4, 8).reduce((s, k) => s + perWeek[k].km, 0);
+  const trendRatio = prior4 > 0 ? recent4 / prior4 : (recent4 > 0 ? 2 : 1);
+  const trendComponent = Math.max(-1, Math.min(1, trendRatio - 1));
+
+  const score = Math.max(-1, Math.min(1, (regularityRatio - 0.5) * 1.4 + trendComponent * 0.3));
+
+  let label, tone;
+  if (activeWeeksCount === 0) { label = "Pas d'activité récente"; tone = "negative"; }
+  else if (score >= 0.5) { label = "Très assidu, en progression"; tone = "positive"; }
+  else if (score >= 0.15) { label = "Entraînement régulier"; tone = "positive"; }
+  else if (score > -0.15) { label = "Régularité correcte"; tone = "neutral"; }
+  else if (score > -0.5) { label = "Entraînement irrégulier"; tone = "negative"; }
+  else { label = "Gros passage à vide récent"; tone = "negative"; }
+
+  // Impact sur les prédictions : ±2.5 % max sur le temps prédit final.
+  const adjustmentFactor = 1 - score * 0.025;
+
+  return { activeWeeksCount, regularityRatio, trendRatio, score, label, tone, adjustmentFactor, recentKm: recent4, priorKm: prior4 };
+}
+
+// ---------- Combinaison finale ----------
+
+const PREDICTION_CONFIDENCE_TIERS = [
+  { key: "faible", label: "Fiabilité faible" },
+  { key: "correcte", label: "Fiabilité correcte" },
+  { key: "bonne", label: "Bonne fiabilité" },
+  { key: "excellente", label: "Excellente fiabilité" },
+];
+
+function confidenceTierFromScore(totalWeight, pointCount) {
+  const score = Math.min(1, (totalWeight / 4) * 0.7 + (Math.min(pointCount, 6) / 6) * 0.3);
+  if (score >= 0.75) return { ...PREDICTION_CONFIDENCE_TIERS[3], score };
+  if (score >= 0.5) return { ...PREDICTION_CONFIDENCE_TIERS[2], score };
+  if (score >= 0.25) return { ...PREDICTION_CONFIDENCE_TIERS[1], score };
+  return { ...PREDICTION_CONFIDENCE_TIERS[0], score };
+}
+
+// Calcule la prédiction pour une distance cible, à partir d'une liste de
+// points déjà filtrés (date <= referenceDate), avec ajustement d'assiduité.
+function predictForDistance(points, targetMeters, referenceDate, assiduiteFactor) {
+  if (!points.length) return null;
+
+  let weightedSum = 0;
+  let weightTotal = 0;
+  const contributions = [];
+
+  for (const p of points) {
+    const vdot = vdotFromPerformance(p.distanceM, p.timeS);
+    if (!vdot || !isFinite(vdot) || vdot <= 0) continue;
+    const predictedT = predictTimeFromVdot(vdot, targetMeters);
+    const w = p.weight * recencyWeight(p.date, referenceDate) * distanceClosenessWeight(p.distanceM, targetMeters);
+    if (w <= 0) continue;
+    weightedSum += predictedT * w;
+    weightTotal += w;
+    contributions.push({ ...p, predictedT, w });
+  }
+
+  if (weightTotal === 0) return null;
+
+  const rawSeconds = weightedSum / weightTotal;
+  const seconds = rawSeconds * assiduiteFactor;
+
+  contributions.sort((a, b) => b.w - a.w);
+
+  return {
+    seconds,
+    rawSeconds,
+    confidence: confidenceTierFromScore(weightTotal, contributions.length),
+    pointCount: contributions.length,
+    topContribution: contributions[0] || null,
+  };
+}
+
+// Point d'entrée principal : prédictions pour toutes les distances de
+// référence, à une date donnée (par défaut aujourd'hui), à partir de
+// l'historique complet des activités.
+function computePredictions(activities, referenceDate) {
+  const refDate = referenceDate || new Date().toISOString().slice(0, 10);
+  const relevantActivities = (activities || []).filter((a) => a.date && a.date <= refDate);
+  const points = collectPredictionPoints(relevantActivities);
+  const assiduite = computeAssiduite(activities, refDate);
+
+  const predictions = {};
+  for (const label of DISTANCE_ORDER) {
+    predictions[label] = predictForDistance(points, DISTANCE_METERS[label], refDate, assiduite.adjustmentFactor);
+  }
+  return { predictions, assiduite };
+}
+
+// Prédictions recalculées en excluant la toute dernière activité enregistrée
+// (à la date de l'avant-dernière) — sert de point de comparaison pour
+// afficher l'effet de la dernière sortie sur chaque prédiction.
+function computePredictionsExcludingLast(activities) {
+  const dated = (activities || []).filter((a) => a.date);
+  if (!dated.length) return null;
+  const sorted = [...dated].sort((a, b) => (a.date < b.date ? 1 : -1));
+  const last = sorted[0];
+  const withoutLast = (activities || []).filter((a) => a.id !== last.id);
+  const remaining = withoutLast.filter((a) => a.date).sort((a, b) => (a.date < b.date ? 1 : -1));
+  const referenceDate = remaining.length ? remaining[0].date : addDaysKey(last.date, -1);
+  return { result: computePredictions(withoutLast, referenceDate), lastActivity: last };
+}
+
+// Historique glissant (8 → 0 semaines) d'une prédiction, pour tracer sa
+// courbe d'évolution récente (mini graphique dans la carte de prédiction).
+const PREDICTION_HISTORY_WEEKS_AGO = [8, 6, 4, 2, 0];
+
+function computePredictionHistory(activities, targetMeters) {
+  const today = new Date().toISOString().slice(0, 10);
+  return PREDICTION_HISTORY_WEEKS_AGO.map((weeksAgo) => {
+    const cutoff = addDaysKey(today, -7 * weeksAgo);
+    const relevant = (activities || []).filter((a) => a.date && a.date <= cutoff);
+    const points = collectPredictionPoints(relevant);
+    const assiduite = computeAssiduite(activities, cutoff);
+    const prediction = predictForDistance(points, targetMeters, cutoff, assiduite.adjustmentFactor);
+    return { weeksAgo, cutoff, seconds: prediction ? prediction.seconds : null };
+  });
+}
+
+function formatDeltaSeconds(s) {
+  const abs = Math.round(Math.abs(s));
+  if (abs < 60) return `${abs} s`;
+  const m = Math.floor(abs / 60);
+  const rem = abs % 60;
+  return rem ? `${m} min ${String(rem).padStart(2, "0")} s` : `${m} min`;
+}
+
 const MONTH_LABELS_SHORT = ["Jan", "Fév", "Mar", "Avr", "Mai", "Juin", "Juil", "Août", "Sep", "Oct", "Nov", "Déc"];
 const MONTH_LABELS_LONG = ["Janvier", "Février", "Mars", "Avril", "Mai", "Juin", "Juillet", "Août", "Septembre", "Octobre", "Novembre", "Décembre"];
 
@@ -3788,6 +4192,140 @@ function tabActivities() {
   `;
 }
 
+// ============================================================
+// Rendu — Prédictions de chrono
+// ============================================================
+
+function predictionSparkline(history) {
+  const valid = history.filter((h) => h.seconds != null);
+  if (valid.length < 2) return "";
+
+  const width = 280, height = 54, padX = 6, padY = 8;
+  const secondsList = valid.map((h) => h.seconds);
+  const min = Math.min(...secondsList);
+  const max = Math.max(...secondsList);
+  const span = Math.max(max - min, 1);
+  const stepX = (width - padX * 2) / (history.length - 1);
+
+  // Plus rapide (temps petit) = plus haut sur le graphique
+  const yFor = (s) => padY + ((s - min) / span) * (height - padY * 2);
+
+  let lastX = null, lastY = null;
+  const segments = [];
+  const dots = [];
+  history.forEach((h, i) => {
+    if (h.seconds == null) return;
+    const x = padX + i * stepX;
+    const y = yFor(h.seconds);
+    if (lastX != null) {
+      segments.push(`<line x1="${lastX.toFixed(1)}" y1="${lastY.toFixed(1)}" x2="${x.toFixed(1)}" y2="${y.toFixed(1)}" stroke="var(--rust)" stroke-width="2" stroke-linecap="round" />`);
+    }
+    dots.push(`<circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="2.6" fill="var(--signal)"><title>${formatTemps(h.seconds)}</title></circle>`);
+    lastX = x; lastY = y;
+  });
+
+  return `
+    <svg viewBox="0 0 ${width} ${height}" class="prediction-spark" preserveAspectRatio="none">
+      ${segments.join("")}
+      ${dots.join("")}
+    </svg>
+  `;
+}
+
+function predictionCard(label, current, previousSeconds) {
+  if (!current) {
+    return `
+      <div class="prediction-card is-empty">
+        <span class="prediction-distance">${label}</span>
+        <p class="muted prediction-empty-text">Pas encore assez de performances sur cette distance pour l'estimer.</p>
+      </div>
+    `;
+  }
+
+  const delta = previousSeconds != null ? previousSeconds - current.seconds : null; // > 0 = plus rapide qu'avant
+  let deltaHtml = "";
+  if (delta != null && Math.abs(delta) >= 1) {
+    const faster = delta > 0;
+    deltaHtml = `
+      <span class="prediction-delta ${faster ? "is-faster" : "is-slower"}" title="Évolution depuis ta dernière activité enregistrée">
+        ${faster ? "▼" : "▲"} ${formatDeltaSeconds(delta)} ${faster ? "gagnées" : "perdues"}
+      </span>
+    `;
+  } else if (delta != null) {
+    deltaHtml = `<span class="prediction-delta is-stable">Stable depuis ta dernière activité</span>`;
+  }
+
+  const history = computePredictionHistory(state.allActivities, DISTANCE_METERS[label]);
+  const spark = predictionSparkline(history);
+
+  return `
+    <div class="prediction-card tier-${current.confidence.key}">
+      <div class="prediction-card-head">
+        <span class="prediction-distance">${label}</span>
+        <span class="prediction-confidence">${current.confidence.label}</span>
+      </div>
+      <div class="prediction-time-row">
+        <span class="prediction-time">${formatTemps(current.seconds)}</span>
+      </div>
+      ${deltaHtml}
+      ${spark ? `
+        <div class="prediction-spark-wrap">
+          ${spark}
+          <div class="prediction-spark-axis"><span>Il y a 8 sem.</span><span>Aujourd'hui</span></div>
+        </div>
+      ` : ""}
+      <p class="muted prediction-basis">${current.pointCount} performance${current.pointCount > 1 ? "s" : ""} prise${current.pointCount > 1 ? "s" : ""} en compte</p>
+    </div>
+  `;
+}
+
+function assiduiteSummary(assiduite) {
+  const impactPct = -assiduite.score * 2.5; // négatif = accélère les prédictions, positif = les ralentit
+  const impactLabel = Math.abs(impactPct) < 0.3
+    ? "a un effet marginal sur tes prédictions en ce moment"
+    : impactPct < 0
+      ? `accélère tes prédictions d'environ ${Math.abs(impactPct).toFixed(1)} %`
+      : `ralentit tes prédictions d'environ ${impactPct.toFixed(1)} %`;
+
+  return `
+    <div class="assiduite-strip tone-${assiduite.tone}">
+      <span class="assiduite-label">${assiduite.label}</span>
+      <span class="assiduite-detail">${assiduite.activeWeeksCount}/8 semaines actives récemment · cette régularité ${impactLabel}</span>
+    </div>
+  `;
+}
+
+function predictionsSection() {
+  const activities = state.allActivities || [];
+  const usable = activities.filter((a) => a.distance_m && a.duree_s);
+
+  if (!usable.length) {
+    return `
+      <section class="panel">
+        <h2>Prédictions de chrono</h2>
+        <p class="muted">Enregistre au moins une course avec distance et durée pour obtenir tes premières estimations de chrono.</p>
+      </section>
+    `;
+  }
+
+  const { predictions: current, assiduite } = computePredictions(activities);
+  const prevData = computePredictionsExcludingLast(activities);
+  const previous = prevData ? prevData.result.predictions : {};
+
+  const cardsHtml = DISTANCE_ORDER.map((label) =>
+    predictionCard(label, current[label], previous[label] ? previous[label].seconds : null)
+  ).join("");
+
+  return `
+    <section class="panel">
+      <h2>Prédictions de chrono</h2>
+      <p class="muted">Basées sur tes performances récentes — pondérées selon leur type (une compétition ou un seuil comptent plus qu'une récup) et leur ancienneté — et ajustées par ton assiduité des 8 dernières semaines.</p>
+      ${assiduiteSummary(assiduite)}
+      <div class="prediction-grid">${cardsHtml}</div>
+    </section>
+  `;
+}
+
 function tabRecords() {
   return `
     <section class="panel">
@@ -3801,11 +4339,9 @@ function tabRecords() {
       ${state.loading ? `<p class="muted">Chargement…</p>` : recordsPodium(state.prs, computeAllBestEffortsByLabel(state.allActivities))}
     </section>
 
-    <section class="panel panel-split">
-      <div class="card">
-        <h3>Prédictions</h3>
-        <p class="muted">Bientôt : estimation de tes chronos sur chaque distance (Riegel + VDOT).</p>
-      </div>
+    ${state.loading ? "" : predictionsSection()}
+
+    <section class="panel">
       <div class="card">
         <h3>Plan d'entraînement</h3>
         <p class="muted">Configure ton profil dans l'onglet Programme pour obtenir un plan adapté.</p>
