@@ -188,54 +188,88 @@ button {
 
 .muted { color: rgba(238,241,232,0.55); font-size: 14px; line-height: 1.5; }
 
-/* Signature element : la "split ladder" — feuille de splits */
+/* Signature element : le "podium" des records — top 3 par distance */
 
-.split-ladder {
+.podium-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.podium-block {
   background: var(--ink-soft);
   border: 1px solid rgba(139,195,74,0.12);
   border-radius: 14px;
-  padding: 8px 20px;
+  padding: 14px 16px 16px;
   box-shadow: 0 6px 18px -10px rgba(0,0,0,0.5);
 }
 
-.split-row {
-  display: grid;
-  grid-template-columns: 72px 1fr 72px;
+.podium-distance {
+  margin: 0 0 12px;
+  font-family: var(--font-display);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  font-size: 12.5px;
+  color: rgba(238,241,232,0.6);
+}
+
+.podium-empty {
+  margin: 0;
+  font-size: 12.5px;
+}
+
+.podium-row {
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  gap: 8px;
+}
+
+.podium-step {
+  display: flex;
+  flex-direction: column;
   align-items: center;
-  gap: 14px;
-  padding: 14px 0;
-  border-bottom: 1px solid rgba(139,195,74,0.2);
+  width: 30%;
+  max-width: 96px;
 }
 
-.split-row:last-child { border-bottom: none; }
-
-.split-label {
+.podium-time {
   font-family: var(--font-mono);
-  font-size: 13px;
-  color: rgba(238,241,232,0.65);
-}
-
-.split-track {
-  height: 10px;
-  background: rgba(238,241,232,0.08);
-  border-radius: 999px;
-  overflow: hidden;
-}
-
-.split-bar {
-  height: 100%;
-  background: var(--rust);
-  border-radius: 999px;
-  transition: width 0.4s ease;
-}
-
-.split-row.is-empty .split-bar { background: rgba(238,241,232,0.15); }
-
-.split-bib {
-  font-family: var(--font-mono);
-  font-size: 15px;
+  font-size: 12.5px;
   font-weight: 600;
-  text-align: right;
+  margin-bottom: 6px;
+  color: rgba(238,241,232,0.85);
+}
+
+.podium-bar {
+  width: 100%;
+  border-radius: 8px 8px 3px 3px;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding-top: 6px;
+  font-family: var(--font-mono);
+  font-weight: 700;
+  font-size: 13px;
+}
+
+.podium-step-1 .podium-bar { height: 64px; background: var(--gradient-accent); color: var(--ink); }
+.podium-step-2 .podium-bar { height: 46px; background: var(--moss); color: var(--ink); }
+.podium-step-3 .podium-bar { height: 32px; background: rgba(139,195,74,0.32); color: rgba(238,241,232,0.85); }
+
+.podium-step.is-empty .podium-bar { background: rgba(238,241,232,0.07); color: rgba(238,241,232,0.3); }
+.podium-step.is-empty .podium-time { color: rgba(238,241,232,0.3); }
+
+.podium-step.is-linked { cursor: pointer; }
+.podium-step.is-linked:hover .podium-bar,
+.podium-step.is-linked:focus-visible .podium-bar { filter: brightness(1.15); }
+
+.podium-tag {
+  margin-top: 4px;
+  font-family: var(--font-body);
+  font-size: 9.5px;
+  color: rgba(238,241,232,0.4);
+  text-align: center;
 }
 
 .panel-split {
@@ -244,49 +278,83 @@ button {
   gap: 16px;
 }
 
-.goal-card {
-  background: var(--ink-soft);
-  border: 1px solid rgba(139,195,74,0.12);
-  border-radius: 14px;
-  padding: 16px 18px;
-  box-shadow: 0 6px 18px -10px rgba(0,0,0,0.5);
-}
-.goal-card.is-reached {
-  border-color: rgba(182,217,40,0.5);
-  box-shadow: 0 0 0 1px rgba(182,217,40,0.2), 0 6px 18px -10px rgba(0,0,0,0.5);
-}
+/* Module objectif — version épurée, orientée mobile : cadran de flèches
+   discrètes autour d'une empreinte de pas. */
 
-.goal-progress-track {
-  height: 14px;
-  background: rgba(238,241,232,0.08);
-  border-radius: 999px;
-  overflow: hidden;
-}
-.goal-progress-bar {
-  height: 100%;
-  background: var(--gradient-accent);
-  border-radius: 999px;
-  transition: width 0.4s ease;
-}
-
-.goal-progress-row {
+.goal-dial {
   display: flex;
+  flex-direction: column;
   align-items: center;
-  justify-content: space-between;
-  margin-top: 10px;
-  gap: 10px;
+  gap: 12px;
+  padding: 6px 0 2px;
 }
-.goal-progress-current {
+
+.goal-ring-wrap {
+  position: relative;
+  width: 156px;
+  height: 156px;
+}
+
+.goal-ring-svg { width: 100%; height: 100%; display: block; }
+
+.goal-ring-track {
+  fill: none;
+  stroke: rgba(238,241,232,0.06);
+  stroke-width: 1;
+}
+
+.goal-tick {
+  fill: rgba(238,241,232,0.16);
+  transition: fill 0.3s ease;
+}
+.goal-tick.is-filled { fill: var(--signal); }
+.goal-dial.is-reached .goal-tick.is-filled { fill: var(--moss); }
+
+.goal-dial-center {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+}
+
+.goal-footprint-icon {
+  width: 26px;
+  height: 26px;
+  color: rgba(238,241,232,0.45);
+}
+.goal-dial.is-reached .goal-footprint-icon { color: var(--signal); }
+
+.goal-dial-pct {
   font-family: var(--font-mono);
-  font-size: 15px;
+  font-size: 21px;
+  font-weight: 700;
+  color: var(--paper);
+}
+
+.goal-dial-footer {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  text-align: center;
+}
+
+.goal-dial-current {
+  font-family: var(--font-mono);
+  font-size: 13.5px;
   font-weight: 600;
+  color: var(--paper);
 }
-.goal-progress-days {
+
+.goal-dial-days {
   font-family: var(--font-body);
-  font-size: 12.5px;
-  color: rgba(238,241,232,0.6);
+  font-size: 12px;
+  color: rgba(238,241,232,0.55);
 }
-.goal-card.is-reached .goal-progress-days { color: var(--signal); }
+.goal-dial.is-reached .goal-dial-days { color: var(--signal); }
 
 .card {
   background: var(--ink-soft);
@@ -1138,54 +1206,6 @@ button {
 }
 .badge-dates-list li.is-linked .li-arrow { opacity: 0.5; }
 
-.split-row.is-linked { cursor: pointer; }
-.split-row.is-linked:hover .split-label,
-.split-row.is-linked:focus-visible .split-label { color: var(--signal); }
-
-.record-rank-list {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  max-height: 320px;
-  overflow-y: auto;
-}
-.record-rank-row {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 9px 12px;
-  background: rgba(238,241,232,0.03);
-  border-radius: 10px;
-  font-family: var(--font-mono);
-  font-size: 13px;
-}
-.record-rank-row.is-linked { cursor: pointer; transition: background 0.15s ease; }
-.record-rank-row.is-linked:hover,
-.record-rank-row.is-linked:focus-visible { background: rgba(139,195,74,0.14); }
-.record-rank-row.is-best { border: 1px solid rgba(182,217,40,0.4); }
-.record-rank-rank {
-  color: rgba(238,241,232,0.5);
-  width: 22px;
-  flex-shrink: 0;
-}
-.record-rank-row.is-best .record-rank-rank { color: var(--signal); }
-.record-rank-time {
-  font-weight: 600;
-  min-width: 70px;
-}
-.record-rank-date {
-  color: rgba(238,241,232,0.6);
-  flex: 1;
-}
-.record-rank-tag {
-  font-family: var(--font-body);
-  font-size: 10.5px;
-  color: rgba(238,241,232,0.4);
-}
-
 .badge-speed-section {
   margin-top: 22px;
   padding-top: 16px;
@@ -1482,7 +1502,6 @@ let state = {
   chartFullYear: false,
   badgeModal: null,        // { type: 'distance'|'duration', index } | null
   badgeModalSort: "desc",  // 'desc' | 'asc' — tri des dates d'obtention
-  recordsModal: null,      // distance_label affiché dans la modale de classement des perfs, ou null
   goalEditing: false,      // formulaire d'objectif ouvert (création ou modification)
   goalSaving: false,
   notifications: [],       // toasts de nouveaux paliers/badges débloqués
@@ -2758,80 +2777,73 @@ function viewLogin() {
   `;
 }
 
-function splitLadder(prs, rankingsByLabel) {
+// Fusionne le classement calculé à partir des activités avec un éventuel
+// record ajouté manuellement (cf. recordForm), pour une distance donnée.
+function topEntriesForLabel(label, prs, rankingsByLabel) {
+  const entries = rankingsByLabel[label] || [];
+  const pr = prs.find((p) => p.distance_label === label);
+  const hasManualEntry = pr && pr.activity_id == null
+    && !entries.some((e) => e.temps_s === pr.meilleur_temps_s);
+  return hasManualEntry
+    ? [...entries, { temps_s: pr.meilleur_temps_s, activity_id: null, date: pr.date_obtenu }].sort((a, b) => a.temps_s - b.temps_s)
+    : entries;
+}
+
+// ---------- Podium des records — top 3 directement affiché par distance ----------
+
+function recordsPodium(prs, rankingsByLabel) {
   if (!prs.length) {
     return `<p class="muted">Aucune course enregistrée pour l'instant. Ajoute ta première course pour voir apparaître tes records.</p>`;
   }
 
-  const withTime = prs.filter((p) => p.meilleur_temps_s);
-  const maxSec = withTime.length ? Math.max(...withTime.map((p) => p.meilleur_temps_s)) : 1;
+  const blocks = ["1K", "5K", "10K", "Semi", "Marathon"].map((label) => {
+    const top3 = topEntriesForLabel(label, prs, rankingsByLabel).slice(0, 3);
 
-  const rows = ["1K", "5K", "10K", "Semi", "Marathon"].map((label) => {
-    const pr = prs.find((p) => p.distance_label === label);
-    const sec = pr ? pr.meilleur_temps_s : null;
-    const widthPct = sec ? Math.max(12, (sec / maxSec) * 100) : 6;
-    const empty = !sec;
-    const count = (rankingsByLabel && rankingsByLabel[label] ? rankingsByLabel[label].length : 0);
-    const clickable = !empty || count > 0;
-    return `
-      <div class="split-row ${empty ? "is-empty" : ""} ${clickable ? "is-linked" : ""}"
-           ${clickable ? `data-records-label="${label}" role="button" tabindex="0"` : ""}>
-        <span class="split-label">${label}</span>
-        <div class="split-track">
-          <div class="split-bar" style="width:${widthPct}%"></div>
+    if (!top3.length) {
+      return `
+        <div class="podium-block">
+          <h4 class="podium-distance">${label}</h4>
+          <p class="muted podium-empty">Pas encore de temps enregistré.</p>
         </div>
-        <span class="split-bib">${formatTemps(sec)}</span>
+      `;
+    }
+
+    // Ordre d'affichage d'un vrai podium : 2e à gauche, 1er au centre, 3e à droite.
+    const displayOrder = [1, 0, 2];
+    const steps = displayOrder.map((idx) => {
+      const rank = idx + 1;
+      const e = top3[idx];
+      if (!e) {
+        return `
+          <div class="podium-step podium-step-${rank} is-empty">
+            <span class="podium-time">—</span>
+            <div class="podium-bar">${rank}</div>
+          </div>
+        `;
+      }
+      const linked = !!e.activity_id;
+      const tag = !e.activity_id ? "ajouté manuellement"
+        : e.source === "splits" ? `extrait d'une course de ${(e.activityDistanceM / 1000).toFixed(1)} km`
+        : "";
+      return `
+        <div class="podium-step podium-step-${rank} ${linked ? "is-linked" : ""}"
+             ${linked ? `data-activity-id="${e.activity_id}" role="button" tabindex="0"` : ""}>
+          <span class="podium-time">${formatTemps(e.temps_s)}</span>
+          <div class="podium-bar">${rank}</div>
+          ${tag ? `<span class="podium-tag">${tag}</span>` : ""}
+        </div>
+      `;
+    }).join("");
+
+    return `
+      <div class="podium-block">
+        <h4 class="podium-distance">${label}</h4>
+        <div class="podium-row">${steps}</div>
       </div>
     `;
   }).join("");
 
-  return `<div class="split-ladder">${rows}</div><p class="muted" style="margin-top:8px;font-size:12.5px;">Touche une distance pour voir toutes tes performances, pas seulement la meilleure.</p>`;
-}
-
-// ---------- Modale de classement des performances sur une distance ----------
-
-function recordsRankingModal() {
-  const label = state.recordsModal;
-  if (!label) return "";
-
-  const rankingsByLabel = computeAllBestEffortsByLabel(state.allActivities);
-  const entries = rankingsByLabel[label] || [];
-
-  const pr = state.prs.find((p) => p.distance_label === label);
-  // Un record ajouté manuellement (sans activité liée, cf. recordForm) n'a
-  // pas forcément d'équivalent dans `entries` s'il n'a jamais été rattrapé
-  // par une vraie activité : on l'ajoute alors comme entrée non cliquable.
-  const hasManualEntry = pr && pr.activity_id == null
-    && !entries.some((e) => e.temps_s === pr.meilleur_temps_s);
-  const allEntries = hasManualEntry
-    ? [...entries, { temps_s: pr.meilleur_temps_s, activity_id: null, date: pr.date_obtenu }].sort((a, b) => a.temps_s - b.temps_s)
-    : entries;
-
-  const rowsHtml = allEntries.length
-    ? allEntries.map((e, i) => `
-        <li class="record-rank-row ${e.activity_id ? "is-linked" : ""} ${i === 0 ? "is-best" : ""}"
-            ${e.activity_id ? `data-activity-id="${e.activity_id}" role="button" tabindex="0"` : ""}>
-          <span class="record-rank-rank">#${i + 1}</span>
-          <span class="record-rank-time">${formatTemps(e.temps_s)}</span>
-          <span class="record-rank-date">${e.date ? formatDateFr(e.date) : ""}</span>
-          ${!e.activity_id ? `<span class="record-rank-tag">ajouté manuellement</span>`
-            : e.source === "splits" ? `<span class="record-rank-tag">extrait d'une course de ${(e.activityDistanceM / 1000).toFixed(1)} km</span>`
-            : ""}
-        </li>
-      `).join("")
-    : `<p class="muted">Pas encore de performance enregistrée sur cette distance.</p>`;
-
-  return `
-    <div class="modal-overlay" id="records-detail-overlay">
-      <div class="modal-card">
-        <button class="modal-close" id="records-detail-close" aria-label="Fermer">✕</button>
-        <div class="modal-badge-header">
-          <h3>Tes performances — ${label}</h3>
-        </div>
-        <ul class="record-rank-list">${rowsHtml}</ul>
-      </div>
-    </div>
-  `;
+  return `<div class="podium-list">${blocks}</div>`;
 }
 
 function activityRow(a) {
@@ -2945,7 +2957,7 @@ function tabRecords() {
         </button>
       </div>
       ${state.recordFormOpen ? recordForm() : ""}
-      ${state.loading ? `<p class="muted">Chargement…</p>` : splitLadder(state.prs, computeAllBestEffortsByLabel(state.allActivities))}
+      ${state.loading ? `<p class="muted">Chargement…</p>` : recordsPodium(state.prs, computeAllBestEffortsByLabel(state.allActivities))}
     </section>
 
     <section class="panel panel-split">
@@ -2958,7 +2970,6 @@ function tabRecords() {
         <p class="muted">Configure ton profil dans l'onglet Programme pour obtenir un plan adapté.</p>
       </div>
     </section>
-    ${state.recordsModal ? recordsRankingModal() : ""}
   `;
 }
 
@@ -3333,6 +3344,26 @@ function tabAccount() {
   `;
 }
 
+// Génère une couronne de petites flèches discrètes (plutôt qu'une barre
+// pleine) : chaque flèche pointe dans le sens de la progression, comme une
+// suite de pas qui avancent autour du cadran.
+function goalDialTicks(pct) {
+  const total = 32;
+  const filled = Math.round((Math.max(0, Math.min(100, pct)) / 100) * total);
+  const radius = 50;
+  let ticks = "";
+  for (let i = 0; i < total; i++) {
+    const angleDeg = (360 / total) * i - 90;
+    const angleRad = (angleDeg * Math.PI) / 180;
+    const cx = (60 + radius * Math.cos(angleRad)).toFixed(2);
+    const cy = (60 + radius * Math.sin(angleRad)).toFixed(2);
+    const rotate = (angleDeg + 90).toFixed(1);
+    const isFilled = i < filled;
+    ticks += `<path class="goal-tick ${isFilled ? "is-filled" : ""}" d="M-2.6 -3 L2.6 0 L-2.6 3 Z" transform="translate(${cx} ${cy}) rotate(${rotate})" />`;
+  }
+  return ticks;
+}
+
 function goalPanel() {
   const goal = getGoal();
   const editing = state.goalEditing || !goal;
@@ -3360,13 +3391,23 @@ function goalPanel() {
         <h2>Objectif ${modeLabel}</h2>
         <button class="btn-chip" id="btn-edit-goal">Modifier</button>
       </div>
-      <div class="goal-card ${progress.reached ? "is-reached" : ""}">
-        <div class="goal-progress-track">
-          <div class="goal-progress-bar" style="width:${progress.pct}%"></div>
+      <div class="goal-dial ${progress.reached ? "is-reached" : ""}">
+        <div class="goal-ring-wrap">
+          <svg class="goal-ring-svg" viewBox="0 0 120 120">
+            <circle class="goal-ring-track" cx="60" cy="60" r="50" />
+            ${goalDialTicks(progress.pct)}
+          </svg>
+          <div class="goal-dial-center">
+            <svg class="goal-footprint-icon" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+              <ellipse cx="12.8" cy="6.7" rx="3.4" ry="4.3" />
+              <ellipse cx="11.2" cy="16.6" rx="4.4" ry="5.6" />
+            </svg>
+            <span class="goal-dial-pct">${Math.round(progress.pct)}%</span>
+          </div>
         </div>
-        <div class="goal-progress-row">
-          <span class="goal-progress-current">${currentLabel} / ${targetLabel}</span>
-          <span class="goal-progress-days">
+        <div class="goal-dial-footer">
+          <span class="goal-dial-current">${currentLabel} / ${targetLabel}</span>
+          <span class="goal-dial-days">
             ${progress.reached ? "Objectif atteint 🎉" : `${progress.daysLeft} jour${progress.daysLeft > 1 ? "s" : ""} restant${progress.daysLeft > 1 ? "s" : ""}`}
           </span>
         </div>
@@ -3649,33 +3690,10 @@ function attachHandlers() {
     });
   }
 
-  document.querySelectorAll(".split-row.is-linked").forEach((row) => {
-    const open = () => setState({ recordsModal: row.dataset.recordsLabel });
-    row.addEventListener("click", open);
-    row.addEventListener("keydown", (e) => {
-      if (e.key === "Enter" || e.key === " ") {
-        e.preventDefault();
-        open();
-      }
-    });
-  });
-
-  const recordsDetailOverlay = document.getElementById("records-detail-overlay");
-  if (recordsDetailOverlay) {
-    recordsDetailOverlay.addEventListener("click", (e) => {
-      if (e.target === recordsDetailOverlay) setState({ recordsModal: null });
-    });
-  }
-
-  const recordsDetailClose = document.getElementById("records-detail-close");
-  if (recordsDetailClose) {
-    recordsDetailClose.addEventListener("click", () => setState({ recordsModal: null }));
-  }
-
-  document.querySelectorAll(".record-rank-row.is-linked").forEach((row) => {
-    const goToActivity = () => setState({ recordsModal: null, activityDetailId: row.dataset.activityId });
-    row.addEventListener("click", goToActivity);
-    row.addEventListener("keydown", (e) => {
+  document.querySelectorAll(".podium-step.is-linked").forEach((step) => {
+    const goToActivity = () => setState({ activityDetailId: step.dataset.activityId });
+    step.addEventListener("click", goToActivity);
+    step.addEventListener("keydown", (e) => {
       if (e.key === "Enter" || e.key === " ") {
         e.preventDefault();
         goToActivity();
