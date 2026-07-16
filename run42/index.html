@@ -508,39 +508,135 @@ button {
   color: var(--paper);
 }
 
-/* ---------- Activity list ---------- */
+/* ---------- Activity list — cartes "dossard" ---------- */
 
-.activity-row-wrap { border-bottom: 1px solid rgba(139,195,74,0.15); }
-.activity-list .activity-row-wrap:last-child { border-bottom: none; }
+.activity-list {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.dossard-card {
+  position: relative;
+  display: grid;
+  grid-template-columns: 68px 1fr auto;
+  align-items: stretch;
+  gap: 14px;
+  background: var(--ink-soft);
+  border: 2px solid rgba(139,195,74,0.22);
+  border-radius: 14px;
+  padding: 14px 16px;
+  overflow: visible;
+}
+
+/* perforations façon dossard de course, en haut et en bas de la carte */
+.dossard-card::before,
+.dossard-card::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 60%;
+  height: 1px;
+  background-image: radial-gradient(circle, rgba(139,195,74,0.35) 1.5px, transparent 1.6px);
+  background-size: 10px 10px;
+  background-repeat: repeat-x;
+}
+.dossard-card::before { top: -1px; }
+.dossard-card::after { bottom: -1px; }
+
+.dossard-card.activity-row-clickable { cursor: pointer; transition: border-color 0.14s ease, background 0.14s ease, transform 0.1s ease; }
+.dossard-card.activity-row-clickable:hover,
+.dossard-card.activity-row-clickable:focus-visible {
+  border-color: rgba(139,195,74,0.55);
+  background: var(--ink-softer);
+  outline: none;
+}
+
+.dossard-stub {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  border-right: 2px dashed rgba(139,195,74,0.3);
+  padding-right: 12px;
+  font-family: var(--font-display);
+}
+
+.dossard-day {
+  font-size: 26px;
+  font-weight: 700;
+  line-height: 1;
+  color: var(--moss);
+}
+
+.dossard-month {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: rgba(238,241,232,0.5);
+}
+
+.dossard-body { min-width: 0; }
+
+.dossard-header {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 6px;
+}
 
 .activity-row {
-  display: grid;
-  grid-template-columns: 90px 1fr 90px 90px 30px 30px;
+  display: flex;
+  flex-wrap: wrap;
   align-items: center;
-  gap: 12px;
-  padding: 10px 0;
+  gap: 14px;
   font-family: var(--font-mono);
   font-size: 14px;
 }
-
-.activity-row-clickable { cursor: pointer; border-radius: 10px; transition: background 0.12s ease; }
-.activity-row-clickable:hover, .activity-row-clickable:focus-visible { background: rgba(238,241,232,0.04); outline: none; }
 
 .activity-pr-badge {
   font-family: var(--font-mono);
   font-size: 12px;
   color: var(--signal);
-  padding: 0 0 10px 2px;
+  padding-top: 8px;
 }
-
-.activity-date { color: rgba(238,241,232,0.6); }
 
 .activity-title {
   font-family: var(--font-body);
-  font-size: 13.5px;
+  font-size: 14.5px;
   font-weight: 600;
   color: var(--paper);
-  padding: 8px 0 0 2px;
+}
+
+.activity-type-badge {
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  font-weight: 600;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  color: var(--ink);
+  background: var(--gradient-accent);
+  border-radius: 999px;
+  padding: 3px 9px;
+  white-space: nowrap;
+}
+
+.activity-fractionne-info {
+  font-family: var(--font-mono);
+  font-size: 12.5px;
+  color: rgba(238,241,232,0.65);
+  padding-top: 6px;
+}
+
+.dossard-actions {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 6px;
 }
 
 .activity-delete-btn, .activity-edit-btn {
@@ -736,8 +832,6 @@ button {
 /* ============================================================
    Onglet Activités
    ============================================================ */
-
-.activity-list { background: var(--ink-soft); border-radius: 14px; padding: 4px 20px; }
 
 /* ============================================================
    Onglet Compte
@@ -1383,10 +1477,28 @@ button {
   color: rgba(238,241,232,0.85);
 }
 
+.activity-detail-fractionne,
 .activity-detail-description {
   margin-top: 18px;
   padding-top: 14px;
   border-top: 1px solid rgba(139,195,74,0.25);
+}
+
+.activity-detail-fractionne h4 {
+  font-family: var(--font-display);
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+  font-size: 13px;
+  margin: 0 0 8px;
+  color: rgba(238,241,232,0.85);
+}
+
+.activity-detail-fractionne p {
+  margin: 0;
+  font-size: 13.5px;
+  line-height: 1.5;
+  font-family: var(--font-mono);
+  color: rgba(238,241,232,0.8);
 }
 
 .activity-detail-description h4 {
@@ -1743,6 +1855,27 @@ const DISTANCE_METERS = {
   "20K": 20000, "Semi": 21097, "Marathon": 42195,
 };
 
+// ============================================================
+// Types d'activité
+// ============================================================
+
+const ACTIVITY_TYPES = [
+  "Endurance Fondamentale",
+  "Fractionné",
+  "Sortie longue",
+  "Récupération",
+  "Seuil / Tempo",
+  "Compétition",
+  "Sortie libre",
+];
+
+// Nom d'affichage par défaut d'une course sans titre : "Course du 12 juin"
+function displayTitre(a) {
+  if (a.titre) return a.titre;
+  const d = new Date(a.date + "T00:00:00").toLocaleDateString("fr-FR", { day: "numeric", month: "long" });
+  return `Course du ${d}`;
+}
+
 function formatTemps(s) {
   if (!s && s !== 0) return "—";
   const h = Math.floor(s / 3600);
@@ -1964,6 +2097,10 @@ async function saveActivity(formData) {
       .insert({
         user_id: userId,
         titre: formData.titre || null,
+        type_activite: formData.typeActivite || null,
+        fractionne_effort_s: formData.fractionneEffortS || null,
+        fractionne_repos_s: formData.fractionneReposS || null,
+        fractionne_reps: formData.fractionneReps || null,
         date: formData.date,
         distance_m: distanceM,
         duree_s: dureeS,
@@ -2370,6 +2507,10 @@ async function updateActivity(activityId, formData) {
       .from("activities")
       .update({
         titre: formData.titre || null,
+        type_activite: formData.typeActivite || null,
+        fractionne_effort_s: formData.fractionneEffortS || null,
+        fractionne_repos_s: formData.fractionneReposS || null,
+        fractionne_reps: formData.fractionneReps || null,
         date: formData.date,
         distance_m: distanceM,
         duree_s: dureeS,
@@ -3039,28 +3180,45 @@ function recordsRankingModal() {
 function activityRow(a) {
   const km = (a.distance_m / 1000).toFixed(2);
   const allure = formatTemps(a.allure_moyenne) + "/km";
-  const dateFormatted = new Date(a.date + "T00:00:00").toLocaleDateString("fr-FR", {
-    day: "numeric", month: "short",
-  });
+  const jour = new Date(a.date + "T00:00:00").toLocaleDateString("fr-FR", { day: "numeric" });
+  const mois = new Date(a.date + "T00:00:00").toLocaleDateString("fr-FR", { month: "short" }).replace(".", "");
   // pr_labels est figé au moment de l'enregistrement de la course : ce badge
   // reste affiché même si un record plus récent a depuis écrasé celui-ci
   // dans personal_records.
   const prBadge = a.pr_labels && a.pr_labels.length
     ? `<div class="activity-pr-badge">🏆 Record personnel — ${a.pr_labels.join(", ")}</div>`
     : "";
-  const titleHtml = a.titre ? `<div class="activity-title">${a.titre}</div>` : "";
+  const typeBadge = a.type_activite
+    ? `<span class="activity-type-badge">${a.type_activite}</span>`
+    : "";
+  const fractionneHtml = a.type_activite === "Fractionné" && (a.fractionne_effort_s || a.fractionne_repos_s)
+    ? `<div class="activity-fractionne-info">
+        ${a.fractionne_reps ? `${a.fractionne_reps} × ` : ""}${a.fractionne_effort_s ? formatTemps(a.fractionne_effort_s) : "—"} effort / ${a.fractionne_repos_s ? formatTemps(a.fractionne_repos_s) : "—"} repos
+      </div>`
+    : "";
   return `
-    <div class="activity-row-wrap activity-row-clickable" data-id="${a.id}" role="button" tabindex="0">
-      ${titleHtml}
-      <div class="activity-row">
-        <span class="activity-date">${dateFormatted}</span>
-        <span>${km} km</span>
-        <span>${formatTemps(a.duree_s)}</span>
-        <span class="muted">${allure}</span>
+    <div class="dossard-card activity-row-clickable" data-id="${a.id}" role="button" tabindex="0">
+      <div class="dossard-stub">
+        <span class="dossard-day">${jour}</span>
+        <span class="dossard-month">${mois}</span>
+      </div>
+      <div class="dossard-body">
+        <div class="dossard-header">
+          <span class="activity-title">${displayTitre(a)}</span>
+          ${typeBadge}
+        </div>
+        <div class="activity-row">
+          <span>${km} km</span>
+          <span>${formatTemps(a.duree_s)}</span>
+          <span class="muted">${allure}</span>
+        </div>
+        ${fractionneHtml}
+        ${prBadge}
+      </div>
+      <div class="dossard-actions">
         <button class="activity-edit-btn" data-id="${a.id}" aria-label="Modifier cette course" title="Modifier">${ICONS.edit}</button>
         <button class="activity-delete-btn" data-id="${a.id}" aria-label="Supprimer cette course" title="Supprimer">${ICONS.trash}</button>
       </div>
-      ${prBadge}
     </div>
   `;
 }
@@ -3076,6 +3234,19 @@ function activityDetailModal() {
 
   const prBadge = a.pr_labels && a.pr_labels.length
     ? `<div class="activity-pr-badge">🏆 Record personnel — ${a.pr_labels.join(", ")}</div>`
+    : "";
+
+  const typeBadge = a.type_activite
+    ? `<span class="activity-type-badge">${a.type_activite}</span>`
+    : "";
+
+  const fractionneHtml = a.type_activite === "Fractionné" && (a.fractionne_effort_s || a.fractionne_repos_s)
+    ? `
+      <div class="activity-detail-fractionne">
+        <h4>Fractionné</h4>
+        <p>${a.fractionne_reps ? `${a.fractionne_reps} répétitions — ` : ""}${a.fractionne_effort_s ? formatTemps(a.fractionne_effort_s) : "—"} effort / ${a.fractionne_repos_s ? formatTemps(a.fractionne_repos_s) : "—"} repos</p>
+      </div>
+    `
     : "";
 
   const splitsHtml = a.km_splits && a.km_splits.length
@@ -3103,8 +3274,9 @@ function activityDetailModal() {
       <div class="modal-card">
         <button class="modal-close" id="activity-detail-close" aria-label="Fermer">✕</button>
         <div class="modal-activity-header">
-          <h3>${a.titre ? a.titre : `Course du ${dateFormatted}`}</h3>
+          <h3>${displayTitre(a)}</h3>
           ${a.titre ? `<p class="muted activity-detail-subdate">${dateFormatted}</p>` : ""}
+          ${typeBadge}
           ${prBadge}
         </div>
         <div class="activity-detail-stats">
@@ -3125,6 +3297,7 @@ function activityDetailModal() {
             <span class="stat-value">${a.denivele_m || 0} m</span>
           </div>
         </div>
+        ${fractionneHtml}
         ${descriptionHtml}
         ${splitsHtml}
         <div class="modal-actions">
@@ -3738,6 +3911,28 @@ function viewAddActivity() {
             <input type="text" id="f-titre" maxlength="80" placeholder="Ex. Sortie longue au parc" value="${editing ? (editing.titre || "") : ""}" />
           </label>
 
+          <label>Type d'activité (optionnel)
+            <select id="f-type">
+              <option value="">— Non précisé —</option>
+              ${ACTIVITY_TYPES.map((t) => `<option value="${t}" ${editing && editing.type_activite === t ? "selected" : ""}>${t}</option>`).join("")}
+            </select>
+          </label>
+
+          <div class="fractionne-fields" id="fractionne-fields" style="${editing && editing.type_activite === "Fractionné" ? "" : "display:none;"}">
+            <p class="muted">Détails du fractionné</p>
+            <div class="splits-grid">
+              <label class="split-input-label">Temps de course
+                <input type="text" id="f-frac-effort" placeholder="mm:ss" value="${editing && editing.fractionne_effort_s ? formatDureeInput(editing.fractionne_effort_s) : ""}" />
+              </label>
+              <label class="split-input-label">Temps de repos
+                <input type="text" id="f-frac-repos" placeholder="mm:ss" value="${editing && editing.fractionne_repos_s ? formatDureeInput(editing.fractionne_repos_s) : ""}" />
+              </label>
+              <label class="split-input-label">Répétitions
+                <input type="number" id="f-frac-reps" min="1" step="1" placeholder="10" value="${editing && editing.fractionne_reps ? editing.fractionne_reps : ""}" />
+              </label>
+            </div>
+          </div>
+
           <label>Date
             <input type="date" id="f-date" value="${editing ? editing.date : new Date().toISOString().slice(0, 10)}" required />
           </label>
@@ -4165,6 +4360,14 @@ function attachHandlers() {
     });
   });
 
+  const typeSelect = document.getElementById("f-type");
+  const fractionneFields = document.getElementById("fractionne-fields");
+  if (typeSelect && fractionneFields) {
+    typeSelect.addEventListener("change", () => {
+      fractionneFields.style.display = typeSelect.value === "Fractionné" ? "" : "none";
+    });
+  }
+
   const activityForm = document.getElementById("activity-form");
   if (activityForm) {
     activityForm.addEventListener("submit", (e) => {
@@ -4179,8 +4382,18 @@ function attachHandlers() {
         parseDuree(input.value)
       );
 
+      const typeActivite = document.getElementById("f-type").value || null;
+      const fracEffortInput = document.getElementById("f-frac-effort");
+      const fracReposInput = document.getElementById("f-frac-repos");
+      const fracRepsInput = document.getElementById("f-frac-reps");
+      const isFractionne = typeActivite === "Fractionné";
+
       const payload = {
         titre: document.getElementById("f-titre").value.trim(),
+        typeActivite,
+        fractionneEffortS: isFractionne ? parseDuree(fracEffortInput.value) : null,
+        fractionneReposS: isFractionne ? parseDuree(fracReposInput.value) : null,
+        fractionneReps: isFractionne && fracRepsInput.value ? parseInt(fracRepsInput.value, 10) : null,
         date: document.getElementById("f-date").value,
         distanceKm: parseFloat(document.getElementById("f-distance").value),
         dureeS,
