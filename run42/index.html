@@ -3514,15 +3514,33 @@ function detectBadgeUnlocks(activitiesBefore, activitiesAfter) {
 // ============================================================
 //
 // Principe : chaque activité valide (distance + durée connues) devient un ou
-// plusieurs "points de performance". Pour chaque point, on calcule un VDOT
-// (indice de forme cardio, méthode Daniels & Gilbert) qui permet ensuite de
-// projeter un temps théorique sur n'importe quelle distance de référence.
-// Les points sont pondérés par : le type de séance (une compétition vaut
-// plus qu'une récup), leur ancienneté (les perfs récentes comptent plus,
-// décroissance exponentielle) et l'écart entre la distance source et la
-// distance cible (extrapoler un 10K vers un semi est plus fiable qu'un 1K
-// vers un marathon). Un score d'assiduité (régularité + tendance de volume
-// sur 8 semaines) ajuste ensuite légèrement le résultat final.
+// plusieurs "points de performance". Le modèle VDOT (Daniels & Gilbert)
+// suppose par construction que le temps fourni correspond à un effort
+// maximal de course (100 % de l'engagement) sur la distance parcourue. Or la
+// grande majorité des sorties enregistrées ne sont PAS courues à cet
+// effort-là : un 10K bouclé en endurance fondamentale est volontairement
+// couru "tranquille", pas pour battre un record. Injecter son temps brut
+// dans la formule sous-estimerait donc largement la forme réelle du coureur.
+//
+// On corrige ça en deux étapes indépendantes pour chaque point :
+//  1) Équivalent course (TYPE_RACE_EFFORT_FACTOR) : avant de calculer le
+//     VDOT, on ramène le temps réel à un temps "à effort de course" en le
+//     multipliant par un facteur <1 qui dépend du type de séance (plus la
+//     séance est tranquille, plus la correction est forte). C'est cette
+//     valeur corrigée qui sert de base à la projection sur les autres
+//     distances — pas le chrono brut.
+//  2) Pondération de fiabilité (TYPE_RELIABILITY) : même corrigée, une
+//     estimation issue d'une sortie tranquille reste moins fiable qu'une
+//     vraie perf de compétition, donc elle pèse moins dans la moyenne
+//     pondérée finale et abaisse la confiance affichée.
+//
+// Les points sont aussi pondérés par leur ancienneté (les perfs récentes
+// comptent plus, décroissance exponentielle) et par l'écart entre la
+// distance source et la distance cible (extrapoler un 10K vers un semi est
+// plus fiable qu'un 1K vers un marathon). Un score d'assiduité (régularité +
+// tendance de volume sur 8 semaines) ajuste ensuite légèrement le résultat
+// final, et — au-delà du 10K — un contrôle d'endurance spécifique pénalise
+// la prédiction si aucune sortie récente ne s'approche de la distance visée.
 
 // Fiabilité relative de chaque type de séance comme indicateur d'allure de course
 const TYPE_RELIABILITY = {
@@ -3535,6 +3553,36 @@ const TYPE_RELIABILITY = {
   "Récupération": 0.15,
 };
 const TYPE_RELIABILITY_DEFAULT = 0.30;
+
+// Facteur multiplicatif appliqué au temps réel pour estimer le temps
+// "équivalent course" (effort maximal) à partir duquel le VDOT est calculé.
+// 1.00 = déjà couru à effort de course (aucune correction). Plus le chiffre
+// est bas, plus la séance était tranquille par rapport à ce que le coureur
+// est réellement capable de produire en compétition sur la même distance.
+// Ordres de grandeur issus des repères d'intensité d'entraînement usuels
+// (% VMA / % VO2max) : seuil ≈ 88-92 %, endurance fondamentale ≈ 65-75 %,
+// récupération ≈ 60-65 %, contre ~100 % en course.
+const TYPE_RACE_EFFORT_FACTOR = {
+  "Compétition": 1.00,
+  "Seuil / Tempo": 0.97,
+  "Fractionné": 0.93,
+  "Sortie longue": 0.90,
+  "Sortie libre": 0.85,
+  "Endurance Fondamentale": 0.80,
+  "Récupération": 0.70,
+};
+const TYPE_RACE_EFFORT_FACTOR_DEFAULT = 0.85;
+
+// Convertit un temps réel en temps "équivalent course" selon le type de
+// séance. Un segment extrait des splits (source "splits") capte déjà le
+// rythme réellement couru sur cette portion, hors récupération — il est
+// donc plus proche de l'effort maximal que la moyenne de toute la séance,
+// et la correction est atténuée de moitié.
+function raceEffortFactor(type, source) {
+  const base = TYPE_RACE_EFFORT_FACTOR[type] ?? TYPE_RACE_EFFORT_FACTOR_DEFAULT;
+  if (source === "splits") return Math.min(1, base + (1 - base) * 0.5);
+  return base;
+}
 
 const PREDICTION_RECENCY_HALFLIFE_DAYS = 45; // une perf "pèse" moitié moins tous les ~45 jours
 const PREDICTION_MIN_DISTANCE_M = 800;       // sous ce seuil, une sortie n'est pas un point fiable
@@ -3774,7 +3822,9 @@ function predictForDistance(points, targetMeters, referenceDate, assiduiteFactor
   const contributions = [];
 
   for (const p of points) {
-    const vdot = vdotFromPerformance(p.distanceM, p.timeS);
+    const effortFactor = raceEffortFactor(p.type, p.source);
+    const raceEquivalentTimeS = p.timeS * effortFactor;
+    const vdot = vdotFromPerformance(p.distanceM, raceEquivalentTimeS);
     if (!vdot || !isFinite(vdot) || vdot <= 0) continue;
     const predictedT = predictTimeFromVdot(vdot, targetMeters);
     const recW = recencyWeight(p.date, referenceDate);
@@ -3784,7 +3834,7 @@ function predictForDistance(points, targetMeters, referenceDate, assiduiteFactor
     weightedSum += predictedT * w;
     weightTotal += w;
     ageWeightedSum += daysBetween(p.date, referenceDate) * w;
-    contributions.push({ ...p, predictedT, w, vdot, recW, closeW });
+    contributions.push({ ...p, predictedT, w, vdot, recW, closeW, effortFactor, raceEquivalentTimeS });
   }
 
   if (weightTotal === 0) return null;
@@ -4539,7 +4589,7 @@ function predictionsSection() {
   return `
     <section class="panel">
       <h2>Prédictions de chrono</h2>
-      <p class="muted">Basées sur tes performances récentes — pondérées selon leur type (une compétition ou un seuil comptent plus qu'une récup), leur ancienneté et leur écart à la distance visée — puis ajustées par ton assiduité des 8 dernières semaines. Chaque carte détaille l'allure correspondante, une fourchette réaliste et le détail des performances prises en compte.</p>
+      <p class="muted">Ces temps représentent un effort de compétition maximal, pas ton allure d'entraînement : une sortie tranquille est d'abord ramenée à son équivalent "effort de course" selon son type (une séance en endurance fondamentale ne reflète pas ce que tu es capable de faire à fond), puis pondérée selon sa fiabilité, son ancienneté et son écart à la distance visée, avant ajustement par ton assiduité des 8 dernières semaines.</p>
       ${assiduiteSummary(assiduite)}
       <div class="prediction-grid">${cardsHtml}</div>
     </section>
