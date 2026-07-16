@@ -1480,17 +1480,66 @@ button {
 
 .prediction-card-head {
   display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: 8px;
+  align-items: center;
+  gap: 12px;
 }
 
-.prediction-distance {
+/* Badge circulaire par distance : anneau de progression = score de
+   fiabilité de la prédiction (0 → 100 %), rempli en fonction du tier. */
+.prediction-badge {
+  position: relative;
+  width: 54px;
+  height: 54px;
+  flex: 0 0 auto;
+}
+
+.prediction-badge-ring {
+  position: absolute;
+  inset: 0;
+  transform: rotate(-90deg);
+}
+
+.prediction-badge-ring .ring-track {
+  fill: none;
+  stroke: rgba(238,241,232,0.1);
+  stroke-width: 3.5;
+}
+
+.prediction-badge-ring .ring-progress {
+  fill: none;
+  stroke-width: 3.5;
+  stroke-linecap: round;
+  transition: stroke-dashoffset 0.4s ease;
+}
+
+.tier-faible .ring-progress { stroke: var(--danger); }
+.tier-correcte .ring-progress { stroke: rgba(238,241,232,0.55); }
+.tier-bonne .ring-progress { stroke: var(--moss); }
+.tier-excellente .ring-progress { stroke: var(--signal); }
+
+.prediction-badge-label {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   font-family: var(--font-display);
   text-transform: uppercase;
-  letter-spacing: 0.05em;
-  font-size: 14px;
+  letter-spacing: 0.02em;
+  font-size: 12px;
+  font-weight: 600;
   color: var(--paper);
+  text-align: center;
+}
+
+.prediction-badge-label.is-long { font-size: 9.5px; }
+
+.prediction-card-headinfo {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
 }
 
 .prediction-confidence {
@@ -1499,20 +1548,93 @@ button {
   text-transform: uppercase;
   letter-spacing: 0.04em;
   color: rgba(238,241,232,0.45);
-  text-align: right;
 }
 
 .tier-excellente .prediction-confidence { color: var(--signal); }
 .tier-bonne .prediction-confidence { color: var(--moss); }
 .tier-faible .prediction-confidence { color: var(--danger); }
 
-.prediction-time-row { display: flex; align-items: baseline; }
+.prediction-time-row { display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; }
 
 .prediction-time {
   font-family: var(--font-mono);
   font-size: 27px;
   font-weight: 700;
   color: var(--paper);
+}
+
+.prediction-pace {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: rgba(238,241,232,0.55);
+}
+
+.prediction-range {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: rgba(238,241,232,0.5);
+  margin: -2px 0 0;
+}
+
+.prediction-range b { color: rgba(238,241,232,0.75); font-weight: 600; }
+
+.prediction-detail {
+  margin-top: 2px;
+  border-top: 1px solid rgba(238,241,232,0.08);
+  padding-top: 8px;
+}
+
+.prediction-detail summary {
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: rgba(238,241,232,0.5);
+  cursor: pointer;
+  list-style: none;
+}
+
+.prediction-detail summary::-webkit-details-marker { display: none; }
+.prediction-detail summary::before { content: "▸ "; }
+.prediction-detail[open] summary::before { content: "▾ "; }
+
+.prediction-detail-list {
+  list-style: none;
+  margin: 8px 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.prediction-detail-item {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  font-size: 11px;
+  padding: 6px 8px;
+  border-radius: 8px;
+  background: rgba(238,241,232,0.035);
+}
+
+.prediction-detail-item .pdi-main {
+  color: rgba(238,241,232,0.8);
+  line-height: 1.4;
+}
+
+.prediction-detail-item .pdi-main small {
+  display: block;
+  color: rgba(238,241,232,0.45);
+  font-size: 10px;
+}
+
+.prediction-detail-item .pdi-weight {
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  font-weight: 600;
+  color: var(--moss);
+  white-space: nowrap;
 }
 
 .prediction-delta {
@@ -3624,6 +3746,30 @@ function confidenceTierFromScore(totalWeight, pointCount) {
   return { ...PREDICTION_CONFIDENCE_TIERS[0], score };
 }
 
+// Calcule, à partir des contributions pondérées d'une prédiction, une
+// fourchette basse/haute autour du temps prédit. Avec ≥2 points, on part de
+// l'écart-type pondéré des projections individuelles (dispersion réelle des
+// points de mesure) ; avec un seul point, on n'a aucune dispersion mesurable
+// donc on retombe sur une fourchette forfaitaire liée au score de confiance
+// (moins de confiance ⇒ fourchette plus large). Dans les deux cas la largeur
+// est bornée entre 1 % et 15 % du temps prédit pour rester réaliste.
+function predictionRange(seconds, contributions, confidenceScore) {
+  let spread;
+  if (contributions.length >= 2) {
+    let varSum = 0, wSum = 0;
+    for (const c of contributions) {
+      varSum += c.w * Math.pow(c.predictedT - seconds, 2);
+      wSum += c.w;
+    }
+    const variance = wSum > 0 ? varSum / wSum : 0;
+    spread = Math.sqrt(variance);
+  } else {
+    spread = seconds * (0.03 + (1 - confidenceScore) * 0.09);
+  }
+  spread = Math.min(Math.max(spread, seconds * 0.01), seconds * 0.15);
+  return { low: seconds - spread, high: seconds + spread, spread };
+}
+
 // Calcule la prédiction pour une distance cible, à partir d'une liste de
 // points déjà filtrés (date <= referenceDate), avec ajustement d'assiduité.
 function predictForDistance(points, targetMeters, referenceDate, assiduiteFactor) {
@@ -3631,17 +3777,21 @@ function predictForDistance(points, targetMeters, referenceDate, assiduiteFactor
 
   let weightedSum = 0;
   let weightTotal = 0;
+  let ageWeightedSum = 0;
   const contributions = [];
 
   for (const p of points) {
     const vdot = vdotFromPerformance(p.distanceM, p.timeS);
     if (!vdot || !isFinite(vdot) || vdot <= 0) continue;
     const predictedT = predictTimeFromVdot(vdot, targetMeters);
-    const w = p.weight * recencyWeight(p.date, referenceDate) * distanceClosenessWeight(p.distanceM, targetMeters);
+    const recW = recencyWeight(p.date, referenceDate);
+    const closeW = distanceClosenessWeight(p.distanceM, targetMeters);
+    const w = p.weight * recW * closeW;
     if (w <= 0) continue;
     weightedSum += predictedT * w;
     weightTotal += w;
-    contributions.push({ ...p, predictedT, w });
+    ageWeightedSum += daysBetween(p.date, referenceDate) * w;
+    contributions.push({ ...p, predictedT, w, vdot, recW, closeW });
   }
 
   if (weightTotal === 0) return null;
@@ -3650,13 +3800,21 @@ function predictForDistance(points, targetMeters, referenceDate, assiduiteFactor
   const seconds = rawSeconds * assiduiteFactor;
 
   contributions.sort((a, b) => b.w - a.w);
+  for (const c of contributions) c.wShare = c.w / weightTotal;
+
+  const confidence = confidenceTierFromScore(weightTotal, contributions.length);
+  const range = predictionRange(seconds, contributions, confidence.score);
 
   return {
     seconds,
     rawSeconds,
-    confidence: confidenceTierFromScore(weightTotal, contributions.length),
+    paceSecPerKm: seconds / (targetMeters / 1000),
+    range,
+    avgAgeDays: ageWeightedSum / weightTotal,
+    confidence,
     pointCount: contributions.length,
     topContribution: contributions[0] || null,
+    contributions,
   };
 }
 
@@ -3713,6 +3871,16 @@ function formatDeltaSeconds(s) {
   const rem = abs % 60;
   return rem ? `${m} min ${String(rem).padStart(2, "0")} s` : `${m} min`;
 }
+
+// Allure au format mm:ss/km, à partir d'un temps en secondes par kilomètre.
+function formatPace(secPerKm) {
+  const total = Math.round(secPerKm);
+  const m = Math.floor(total / 60);
+  const s = total % 60;
+  return `${m}:${String(s).padStart(2, "0")}`;
+}
+
+const AGE_DAYS_FMT = new Intl.NumberFormat("fr-FR", { maximumFractionDigits: 0 });
 
 const MONTH_LABELS_SHORT = ["Jan", "Fév", "Mar", "Avr", "Mai", "Juin", "Juil", "Août", "Sep", "Oct", "Nov", "Déc"];
 const MONTH_LABELS_LONG = ["Janvier", "Février", "Mars", "Avril", "Mai", "Juin", "Juillet", "Août", "Septembre", "Octobre", "Novembre", "Décembre"];
@@ -4232,12 +4400,56 @@ function predictionSparkline(history) {
   `;
 }
 
+// Badge circulaire identifiant la distance : un anneau de progression fait
+// le tour du label et matérialise le score de fiabilité de la prédiction
+// (anneau plein = fiabilité excellente, anneau à peine amorcé = faible).
+// score va de 0 à 1 ; score = null → anneau neutre (carte vide, pas assez
+// de données) au lieu d'un pourcentage de confiance.
+function predictionBadge(label, score) {
+  const r = 24;
+  const circumference = 2 * Math.PI * r;
+  const pct = score == null ? 0 : Math.max(0.04, score); // un minimum visible même à faible score
+  const offset = circumference * (1 - pct);
+  return `
+    <div class="prediction-badge">
+      <svg viewBox="0 0 54 54" class="prediction-badge-ring">
+        <circle cx="27" cy="27" r="${r}" class="ring-track" />
+        ${score != null ? `<circle cx="27" cy="27" r="${r}" class="ring-progress" stroke-dasharray="${circumference.toFixed(1)}" stroke-dashoffset="${offset.toFixed(1)}" />` : ""}
+      </svg>
+      <span class="prediction-badge-label${label.length > 3 ? " is-long" : ""}">${label}</span>
+    </div>
+  `;
+}
+
+// Traduit une contribution (une perf ayant servi au calcul) en une ligne de
+// détail lisible : date, type de séance, distance/temps réels parcourus, et
+// la part (en %) qu'elle représente dans le résultat final pondéré.
+function predictionDetailItem(c) {
+  const distLabel = c.distanceM >= 1000 ? `${(c.distanceM / 1000).toFixed(c.distanceM % 1000 === 0 ? 0 : 2)} km` : `${c.distanceM} m`;
+  const sourceLabel = c.source === "splits" ? "segment extrait des splits" : "course entière";
+  const dateLabel = new Date(c.date + "T00:00:00").toLocaleDateString("fr-FR", { day: "2-digit", month: "short", year: "numeric" });
+  const typeLabel = c.type || "Type non renseigné";
+  return `
+    <li class="prediction-detail-item">
+      <span class="pdi-main">
+        ${dateLabel} — ${distLabel} en ${formatTemps(c.timeS)} (${typeLabel})
+        <small>${sourceLabel} · VDOT ${c.vdot.toFixed(1)} · projeté ${formatTemps(c.predictedT)} sur cette distance</small>
+      </span>
+      <span class="pdi-weight">${Math.round(c.wShare * 100)} %</span>
+    </li>
+  `;
+}
+
 function predictionCard(label, current, previousSeconds) {
   if (!current) {
     return `
       <div class="prediction-card is-empty">
-        <span class="prediction-distance">${label}</span>
-        <p class="muted prediction-empty-text">Pas encore assez de performances sur cette distance pour l'estimer.</p>
+        <div class="prediction-card-head">
+          ${predictionBadge(label, null)}
+          <div class="prediction-card-headinfo">
+            <p class="muted prediction-empty-text">Pas encore assez de performances sur cette distance pour l'estimer.</p>
+          </div>
+        </div>
       </div>
     `;
   }
@@ -4258,15 +4470,26 @@ function predictionCard(label, current, previousSeconds) {
   const history = computePredictionHistory(state.allActivities, DISTANCE_METERS[label]);
   const spark = predictionSparkline(history);
 
+  const scorePct = Math.round(current.confidence.score * 100);
+  const avgAge = Math.round(current.avgAgeDays);
+  const ageLabel = avgAge <= 1 ? "quelques jours" : `${AGE_DAYS_FMT.format(avgAge)} jours en moyenne`;
+
+  const top5 = current.contributions.slice(0, 5).map(predictionDetailItem).join("");
+  const restCount = current.contributions.length - 5;
+
   return `
     <div class="prediction-card tier-${current.confidence.key}">
       <div class="prediction-card-head">
-        <span class="prediction-distance">${label}</span>
-        <span class="prediction-confidence">${current.confidence.label}</span>
+        ${predictionBadge(label, current.confidence.score)}
+        <div class="prediction-card-headinfo">
+          <span class="prediction-confidence">${current.confidence.label} · ${scorePct} %</span>
+          <div class="prediction-time-row">
+            <span class="prediction-time">${formatTemps(current.seconds)}</span>
+            <span class="prediction-pace">${formatPace(current.paceSecPerKm)} /km</span>
+          </div>
+        </div>
       </div>
-      <div class="prediction-time-row">
-        <span class="prediction-time">${formatTemps(current.seconds)}</span>
-      </div>
+      <p class="prediction-range">Fourchette estimée : <b>${formatTemps(current.range.low)}</b> — <b>${formatTemps(current.range.high)}</b></p>
       ${deltaHtml}
       ${spark ? `
         <div class="prediction-spark-wrap">
@@ -4274,7 +4497,14 @@ function predictionCard(label, current, previousSeconds) {
           <div class="prediction-spark-axis"><span>Il y a 8 sem.</span><span>Aujourd'hui</span></div>
         </div>
       ` : ""}
-      <p class="muted prediction-basis">${current.pointCount} performance${current.pointCount > 1 ? "s" : ""} prise${current.pointCount > 1 ? "s" : ""} en compte</p>
+      <p class="muted prediction-basis">${current.pointCount} performance${current.pointCount > 1 ? "s" : ""} prise${current.pointCount > 1 ? "s" : ""} en compte, âgée${current.pointCount > 1 ? "s" : ""} de ${ageLabel}${current.topContribution ? ` · la plus déterminante pèse pour ${Math.round(current.topContribution.wShare * 100)} % du résultat` : ""}.</p>
+      <details class="prediction-detail">
+        <summary>Détail du calcul</summary>
+        <ul class="prediction-detail-list">
+          ${top5}
+          ${restCount > 0 ? `<li class="prediction-detail-item"><span class="pdi-main muted">+ ${restCount} autre${restCount > 1 ? "s" : ""} performance${restCount > 1 ? "s" : ""} avec un poids plus faible</span></li>` : ""}
+        </ul>
+      </details>
     </div>
   `;
 }
@@ -4319,7 +4549,7 @@ function predictionsSection() {
   return `
     <section class="panel">
       <h2>Prédictions de chrono</h2>
-      <p class="muted">Basées sur tes performances récentes — pondérées selon leur type (une compétition ou un seuil comptent plus qu'une récup) et leur ancienneté — et ajustées par ton assiduité des 8 dernières semaines.</p>
+      <p class="muted">Basées sur tes performances récentes — pondérées selon leur type (une compétition ou un seuil comptent plus qu'une récup), leur ancienneté et leur écart à la distance visée — puis ajustées par ton assiduité des 8 dernières semaines. Chaque carte détaille l'allure correspondante, une fourchette réaliste et le détail des performances prises en compte.</p>
       ${assiduiteSummary(assiduite)}
       <div class="prediction-grid">${cardsHtml}</div>
     </section>
