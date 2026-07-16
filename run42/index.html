@@ -404,6 +404,129 @@ button {
 }
 .segmented-btn:focus-visible { outline: 2px solid var(--signal); outline-offset: 2px; }
 
+/* ---------- Chips de sélection (remplace les <select> pour la personnalisation) ---------- */
+
+.chip-toggle-group {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.chip-toggle {
+  border: 1px solid rgba(238,241,232,0.15);
+  background: rgba(238,241,232,0.05);
+  color: rgba(238,241,232,0.75);
+  font-family: var(--font-body);
+  font-size: 13px;
+  font-weight: 600;
+  padding: 9px 14px;
+  border-radius: 999px;
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+}
+
+.chip-toggle.is-active {
+  background: var(--gradient-accent);
+  border-color: transparent;
+  color: var(--ink);
+}
+
+.chip-toggle:hover:not(.is-active) { border-color: rgba(139,195,74,0.4); }
+.chip-toggle:focus-visible { outline: 2px solid var(--signal); outline-offset: 2px; }
+
+/* ---------- Sections de formulaire (regroupement thématique du profil) ---------- */
+
+.form-section {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding-top: 18px;
+  border-top: 1px solid rgba(139,195,74,0.14);
+}
+
+.form-section:first-of-type { padding-top: 0; border-top: none; }
+
+.form-section-title {
+  font-family: var(--font-display);
+  font-size: 13px;
+  font-weight: 600;
+  color: rgba(238,241,232,0.8);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.form-section-hint {
+  font-size: 12px;
+  color: rgba(238,241,232,0.45);
+  line-height: 1.4;
+  margin: 0;
+}
+
+.form-subgroup {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.form-subgroup + .form-subgroup { margin-top: 4px; }
+
+/* ---------- Carte récapitulative du profil (mode lecture) ---------- */
+
+.profil-summary {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  background: var(--ink-soft);
+  border: 1px solid rgba(139,195,74,0.12);
+  border-radius: 14px;
+  padding: 20px;
+  box-shadow: 0 6px 18px -10px rgba(0,0,0,0.5);
+}
+
+.profil-summary-row {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+}
+
+.profil-summary-label {
+  font-size: 11.5px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: rgba(238,241,232,0.45);
+  font-weight: 600;
+}
+
+.profil-summary-value {
+  font-size: 14.5px;
+  color: var(--paper);
+}
+
+.profil-tag-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.profil-tag {
+  font-size: 12px;
+  font-family: var(--font-mono);
+  padding: 4px 11px;
+  border-radius: 999px;
+  background: rgba(139,195,74,0.15);
+  color: var(--moss);
+}
+
+.profil-note {
+  font-size: 13.5px;
+  font-style: italic;
+  color: rgba(238,241,232,0.65);
+  line-height: 1.5;
+  border-left: 2px solid rgba(139,195,74,0.35);
+  padding: 2px 0 2px 14px;
+  margin: 0;
+}
+
 .goal-form-target-input {
   text-align: center;
   font-size: 22px !important;
@@ -1932,6 +2055,20 @@ const NIVEAUX = [
   { id: "confirme", label: "Confirmé" },
 ];
 
+const EXPERIENCES = [
+  { id: "moins-6-mois", label: "< 6 mois" },
+  { id: "6-mois-2-ans", label: "6 mois – 2 ans" },
+  { id: "2-5-ans", label: "2 – 5 ans" },
+  { id: "5-ans-plus", label: "5 ans et +" },
+];
+
+const VOLUMES_HEBDO = [
+  { id: "moins-15", label: "< 15 km" },
+  { id: "15-30", label: "15 – 30 km" },
+  { id: "30-50", label: "30 – 50 km" },
+  { id: "50-plus", label: "50 km et +" },
+];
+
 const OBJECTIFS = [
   { id: "forme", label: "Forme générale" },
   { id: "perte-poids", label: "Perte de poids" },
@@ -1941,11 +2078,47 @@ const OBJECTIFS = [
   { id: "marathon", label: "Marathon" },
 ];
 
+// Objectifs pour lesquels une date d'échéance / un temps cible ont du sens
+const OBJECTIFS_COURSE = ["5k", "10k", "semi", "marathon"];
+
 const DISPOS = [
   { id: "2", label: "2 jours / semaine" },
   { id: "3", label: "3 jours / semaine" },
   { id: "4", label: "4 jours / semaine" },
   { id: "5", label: "5+ jours / semaine" },
+];
+
+const JOURS_SEMAINE = [
+  { id: "lun", label: "Lun" },
+  { id: "mar", label: "Mar" },
+  { id: "mer", label: "Mer" },
+  { id: "jeu", label: "Jeu" },
+  { id: "ven", label: "Ven" },
+  { id: "sam", label: "Sam" },
+  { id: "dim", label: "Dim" },
+];
+
+const DUREES_SEANCE = [
+  { id: "30-45", label: "30 – 45 min" },
+  { id: "45-60", label: "45 – 60 min" },
+  { id: "60-90", label: "60 – 90 min" },
+  { id: "90-plus", label: "90 min et +" },
+];
+
+const TERRAINS = [
+  { id: "route", label: "Route" },
+  { id: "trail", label: "Trail / nature" },
+  { id: "piste", label: "Piste" },
+  { id: "tapis", label: "Tapis" },
+];
+
+const CONTRAINTES = [
+  { id: "pas-fractionne", label: "Pas de fractionné" },
+  { id: "sensible-blessure", label: "Sensible aux blessures" },
+  { id: "matin", label: "Préfère le matin" },
+  { id: "soir", label: "Préfère le soir" },
+  { id: "longue-weekend", label: "Sortie longue le week-end" },
+  { id: "peu-de-temps", label: "Peu de temps disponible" },
 ];
 
 const OBJECTIF_SESSIONS = {
@@ -1965,20 +2138,97 @@ const NIVEAU_SUFFIX = {
 };
 
 function generateProgram(profil) {
-  const pool = OBJECTIF_SESSIONS[profil.objectif] || OBJECTIF_SESSIONS.forme;
-  const n = Math.min(parseInt(profil.joursDispo, 10) || 3, pool.length);
+  let pool = OBJECTIF_SESSIONS[profil.objectif] || OBJECTIF_SESSIONS.forme;
+
+  // Si le coureur ne veut pas de fractionné/VMA, on retire ce type de séance du pool
+  const contraintes = Array.isArray(profil.contraintes) ? profil.contraintes : [];
+  if (contraintes.includes("pas-fractionne")) {
+    const sansFractionne = pool.filter((s) => !/fractionné|vma/i.test(s));
+    if (sansFractionne.length) pool = sansFractionne;
+  }
+
+  // Le nombre de séances suit les jours choisis (nouveau format) ou, à défaut,
+  // l'ancien champ joursDispo (profils enregistrés avant cette mise à jour).
+  const joursSemaine = Array.isArray(profil.joursSemaine) ? profil.joursSemaine : [];
+  const joursCount = joursSemaine.length || parseInt(profil.joursDispo, 10) || 3;
+  const n = Math.min(joursCount, pool.length);
   const suffix = NIVEAU_SUFFIX[profil.niveau] || "";
+
+  const jourLabels = joursSemaine.length
+    ? JOURS_SEMAINE.filter((j) => joursSemaine.includes(j.id)).map((j) => j.label)
+    : null;
+
   const sessions = [];
   for (let i = 0; i < n; i++) {
-    sessions.push({ jour: `Séance ${i + 1}`, type: pool[i] + suffix });
+    sessions.push({
+      jour: jourLabels ? jourLabels[i] : `Séance ${i + 1}`,
+      type: pool[i] + suffix,
+    });
   }
   return sessions;
 }
 
-function describeProfil(profil) {
-  const niveauLabel = NIVEAUX.find((n) => n.id === profil.niveau)?.label || profil.niveau;
-  const objectifLabel = OBJECTIFS.find((o) => o.id === profil.objectif)?.label || profil.objectif;
-  return `Niveau ${niveauLabel} · Objectif ${objectifLabel} · ${profil.joursDispo} jour(s)/semaine`;
+function labelFor(list, id) {
+  return list.find((o) => o.id === id)?.label || id;
+}
+
+// Carte récapitulative du profil, affichée quand la personnalisation n'est pas en édition
+function profilSummaryCard(profil) {
+  const niveauLabel = labelFor(NIVEAUX, profil.niveau);
+  const experienceLabel = profil.experience ? labelFor(EXPERIENCES, profil.experience) : null;
+  const volumeLabel = profil.volumeHebdo ? labelFor(VOLUMES_HEBDO, profil.volumeHebdo) : null;
+  const objectifLabel = labelFor(OBJECTIFS, profil.objectif);
+  const dureeLabel = profil.dureeSeance ? labelFor(DUREES_SEANCE, profil.dureeSeance) : null;
+
+  const joursSemaine = Array.isArray(profil.joursSemaine) ? profil.joursSemaine : [];
+  const joursTags = joursSemaine.length
+    ? JOURS_SEMAINE.filter((j) => joursSemaine.includes(j.id)).map((j) => j.label)
+    : (profil.joursDispo ? [`${profil.joursDispo} jour(s)/semaine`] : null);
+
+  const terrainList = Array.isArray(profil.terrain) ? profil.terrain : [];
+  const terrainTags = terrainList.length
+    ? TERRAINS.filter((t) => terrainList.includes(t.id)).map((t) => t.label)
+    : null;
+
+  const contraintesList = Array.isArray(profil.contraintes) ? profil.contraintes : [];
+  const contraintesTags = contraintesList.length
+    ? CONTRAINTES.filter((c) => contraintesList.includes(c.id)).map((c) => c.label)
+    : null;
+
+  const objectifExtra = [];
+  if (profil.objectifTemps) objectifExtra.push(`temps cible ${profil.objectifTemps}`);
+  if (profil.objectifDate) {
+    const d = new Date(profil.objectifDate);
+    if (!isNaN(d)) objectifExtra.push(`échéance le ${d.toLocaleDateString("fr-FR")}`);
+  }
+  const objectifValue = objectifExtra.length ? `${objectifLabel} · ${objectifExtra.join(" · ")}` : objectifLabel;
+
+  const rows = [
+    { label: "Niveau", value: [niveauLabel, experienceLabel].filter(Boolean).join(" · ") },
+    volumeLabel ? { label: "Volume hebdo actuel", value: volumeLabel } : null,
+    { label: "Objectif", value: objectifValue },
+    joursTags ? { label: "Jours de course", tags: joursTags } : null,
+    dureeLabel ? { label: "Temps par séance", value: dureeLabel } : null,
+    terrainTags ? { label: "Terrain préféré", tags: terrainTags } : null,
+    contraintesTags ? { label: "Contraintes & préférences", tags: contraintesTags } : null,
+  ].filter(Boolean);
+
+  const rowsHtml = rows.map((r) => `
+    <div class="profil-summary-row">
+      <span class="profil-summary-label">${r.label}</span>
+      ${
+        r.tags
+          ? `<div class="profil-tag-list">${r.tags.map((t) => `<span class="profil-tag">${t}</span>`).join("")}</div>`
+          : `<span class="profil-summary-value">${r.value}</span>`
+      }
+    </div>
+  `).join("");
+
+  const noteHtml = profil.notes
+    ? `<p class="profil-note">« ${profil.notes} »</p>`
+    : "";
+
+  return `<div class="profil-summary">${rowsHtml}${noteHtml}</div>`;
 }
 
 // ============================================================
@@ -3597,7 +3847,7 @@ function tabProgramme() {
       </div>
       ${
         profil && !state.profilEditing
-          ? `<p class="muted">${describeProfil(profil)}</p>`
+          ? profilSummaryCard(profil)
           : profilForm(profil)
       }
     </section>
@@ -4080,23 +4330,84 @@ function goalForm(goal) {
   `;
 }
 
+// Construit un groupe de chips (sélection simple ou multiple) relié à un input caché
+function chipGroup({ id, options, selected, multi }) {
+  const selectedSet = multi ? new Set(Array.isArray(selected) ? selected : []) : null;
+  const buttons = options.map((o) => {
+    const active = multi ? selectedSet.has(o.id) : selected === o.id;
+    return `<button type="button" class="chip-toggle ${active ? "is-active" : ""}" data-value="${o.id}">${o.label}</button>`;
+  }).join("");
+  const hiddenValue = multi ? (Array.isArray(selected) ? selected.join(",") : "") : (selected || "");
+  return `
+    <div class="chip-toggle-group" data-target="${id}" data-multi="${multi ? "true" : "false"}">${buttons}</div>
+    <input type="hidden" id="${id}" value="${hiddenValue}" />
+  `;
+}
+
 function profilForm(profil) {
-  const niveauOptions = NIVEAUX.map((n) => `<option value="${n.id}" ${profil?.niveau === n.id ? "selected" : ""}>${n.label}</option>`).join("");
-  const objectifOptions = OBJECTIFS.map((o) => `<option value="${o.id}" ${profil?.objectif === o.id ? "selected" : ""}>${o.label}</option>`).join("");
-  const disposOptions = DISPOS.map((d) => `<option value="${d.id}" ${profil?.joursDispo === d.id ? "selected" : ""}>${d.label}</option>`).join("");
+  const isObjectifCourse = OBJECTIFS_COURSE.includes(profil?.objectif);
 
   return `
     <form id="profil-form" class="activity-form">
-      <p class="muted">Indique ton niveau et ton objectif : on te propose un programme d'entraînement adapté dans l'onglet Programme.</p>
-      <label>Niveau
-        <select id="f-niveau" required>${niveauOptions}</select>
-      </label>
-      <label>Objectif
-        <select id="f-objectif" required>${objectifOptions}</select>
-      </label>
-      <label>Disponibilités
-        <select id="f-dispo" required>${disposOptions}</select>
-      </label>
+      <p class="muted">Plus ton profil est précis, plus le programme qu'on te proposera ensuite sera adapté à ta réalité : ton niveau, ton objectif, tes disponibilités et tes contraintes comptent tous.</p>
+
+      <div class="form-section">
+        <span class="form-section-title">Ton niveau</span>
+        <div class="form-subgroup">
+          <label class="goal-form-label">Niveau général</label>
+          ${chipGroup({ id: "f-niveau", options: NIVEAUX, selected: profil?.niveau || NIVEAUX[0].id, multi: false })}
+        </div>
+        <div class="form-subgroup">
+          <label class="goal-form-label">Tu cours depuis…</label>
+          ${chipGroup({ id: "f-experience", options: EXPERIENCES, selected: profil?.experience || EXPERIENCES[0].id, multi: false })}
+        </div>
+        <div class="form-subgroup">
+          <label class="goal-form-label">Volume hebdomadaire actuel</label>
+          ${chipGroup({ id: "f-volume", options: VOLUMES_HEBDO, selected: profil?.volumeHebdo || VOLUMES_HEBDO[0].id, multi: false })}
+        </div>
+      </div>
+
+      <div class="form-section">
+        <span class="form-section-title">Ton objectif</span>
+        ${chipGroup({ id: "f-objectif", options: OBJECTIFS, selected: profil?.objectif || OBJECTIFS[0].id, multi: false })}
+        <div id="objectif-details" class="form-subgroup" style="display:${isObjectifCourse ? "flex" : "none"};">
+          <label>Date de l'objectif (facultatif)
+            <input type="date" id="f-objectif-date" value="${profil?.objectifDate || ""}" />
+          </label>
+          <label>Temps cible (facultatif — ex : 45:00 ou 3:30:00)
+            <input type="text" id="f-objectif-temps" placeholder="mm:ss ou hh:mm:ss" value="${profil?.objectifTemps || ""}" />
+          </label>
+        </div>
+      </div>
+
+      <div class="form-section">
+        <span class="form-section-title">Tes disponibilités</span>
+        <div class="form-subgroup">
+          <label class="goal-form-label">Jours où tu peux courir</label>
+          ${chipGroup({ id: "f-jours", options: JOURS_SEMAINE, selected: profil?.joursSemaine || [], multi: true })}
+          <p class="form-section-hint">Le nombre de jours sélectionnés définit le nombre de séances de ton programme.</p>
+        </div>
+        <div class="form-subgroup">
+          <label class="goal-form-label">Temps disponible par séance</label>
+          ${chipGroup({ id: "f-duree-seance", options: DUREES_SEANCE, selected: profil?.dureeSeance || DUREES_SEANCE[1].id, multi: false })}
+        </div>
+      </div>
+
+      <div class="form-section">
+        <span class="form-section-title">Terrain préféré</span>
+        ${chipGroup({ id: "f-terrain", options: TERRAINS, selected: profil?.terrain || [], multi: true })}
+      </div>
+
+      <div class="form-section">
+        <span class="form-section-title">Contraintes & préférences</span>
+        ${chipGroup({ id: "f-contraintes", options: CONTRAINTES, selected: profil?.contraintes || [], multi: true })}
+      </div>
+
+      <div class="form-section">
+        <span class="form-section-title">Autre chose à préciser ?</span>
+        <textarea id="f-profil-notes" placeholder="Une blessure en cours, une contrainte particulière, une envie précise pour ton prochain programme…" maxlength="400">${profil?.notes || ""}</textarea>
+      </div>
+
       <button type="submit" class="btn-primary" ${state.profilSaving ? "disabled" : ""}>
         ${state.profilSaving ? "Enregistrement…" : "Enregistrer mon profil"}
       </button>
@@ -4439,10 +4750,21 @@ function attachHandlers() {
   if (profilFormEl) {
     profilFormEl.addEventListener("submit", (e) => {
       e.preventDefault();
+      const joursValue = document.getElementById("f-jours").value;
+      const terrainValue = document.getElementById("f-terrain").value;
+      const contraintesValue = document.getElementById("f-contraintes").value;
       saveProfil({
         niveau: document.getElementById("f-niveau").value,
+        experience: document.getElementById("f-experience").value,
+        volumeHebdo: document.getElementById("f-volume").value,
         objectif: document.getElementById("f-objectif").value,
-        joursDispo: document.getElementById("f-dispo").value,
+        objectifDate: document.getElementById("f-objectif-date").value || null,
+        objectifTemps: document.getElementById("f-objectif-temps").value.trim() || null,
+        joursSemaine: joursValue ? joursValue.split(",") : [],
+        dureeSeance: document.getElementById("f-duree-seance").value,
+        terrain: terrainValue ? terrainValue.split(",") : [],
+        contraintes: contraintesValue ? contraintesValue.split(",") : [],
+        notes: document.getElementById("f-profil-notes").value.trim(),
       });
     });
   }
@@ -4462,6 +4784,32 @@ function attachHandlers() {
 
   const goalMetricHiddenInput = document.getElementById("f-goal-metric");
   const goalTargetLabel = document.getElementById("f-goal-target-label");
+
+  document.querySelectorAll(".chip-toggle-group[data-target]").forEach((group) => {
+    const hiddenInput = document.getElementById(group.dataset.target);
+    if (!hiddenInput) return;
+    const isMulti = group.dataset.multi === "true";
+    group.querySelectorAll(".chip-toggle").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        if (isMulti) {
+          btn.classList.toggle("is-active");
+          const values = Array.from(group.querySelectorAll(".chip-toggle.is-active")).map((b) => b.dataset.value);
+          hiddenInput.value = values.join(",");
+        } else {
+          group.querySelectorAll(".chip-toggle").forEach((b) => b.classList.remove("is-active"));
+          btn.classList.add("is-active");
+          hiddenInput.value = btn.dataset.value;
+        }
+        // Objectif "course" (5k/10k/semi/marathon) : on affiche date/temps cible en plus
+        if (group.dataset.target === "f-objectif") {
+          const details = document.getElementById("objectif-details");
+          if (details) {
+            details.style.display = OBJECTIFS_COURSE.includes(btn.dataset.value) ? "flex" : "none";
+          }
+        }
+      });
+    });
+  });
 
   document.querySelectorAll(".segmented[data-target]").forEach((group) => {
     const hiddenInput = document.getElementById(group.dataset.target);
