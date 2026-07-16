@@ -1452,7 +1452,7 @@ button {
 
 .prediction-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
   gap: 14px;
   margin-top: 14px;
 }
@@ -1460,15 +1460,20 @@ button {
 .prediction-card {
   display: flex;
   flex-direction: column;
-  gap: 9px;
   background: var(--ink-soft);
   border: 1px solid rgba(238,241,232,0.1);
-  border-radius: 14px;
-  padding: 16px;
+  border-radius: 16px;
+  padding: 18px 18px 16px;
   box-shadow: 0 6px 18px -10px rgba(0,0,0,0.5);
 }
 
-.prediction-card.is-empty { opacity: 0.5; gap: 4px; }
+.prediction-card.is-empty {
+  align-items: center;
+  text-align: center;
+  gap: 10px;
+  padding: 22px 18px;
+  opacity: 0.6;
+}
 
 .prediction-card.tier-faible { border-color: rgba(227,91,74,0.3); }
 .prediction-card.tier-correcte { border-color: rgba(238,241,232,0.14); }
@@ -1478,18 +1483,26 @@ button {
   box-shadow: 0 0 0 1px rgba(182,217,40,0.25), 0 6px 18px -10px rgba(0,0,0,0.5);
 }
 
-.prediction-card-head {
+/* Le badge de distance forme son propre bloc, détaché du reste des
+   données : c'est l'identité de la carte, pas une donnée parmi d'autres. */
+.prediction-card-top {
   display: flex;
+  flex-direction: column;
   align-items: center;
-  gap: 12px;
+  gap: 7px;
+  padding-bottom: 14px;
+  margin-bottom: 14px;
+  border-bottom: 1px solid rgba(238,241,232,0.08);
 }
+
+.prediction-card.is-empty .prediction-card-top { padding-bottom: 0; margin-bottom: 0; border-bottom: none; }
 
 /* Badge circulaire par distance : anneau de progression = score de
    fiabilité de la prédiction (0 → 100 %), rempli en fonction du tier. */
 .prediction-badge {
   position: relative;
-  width: 54px;
-  height: 54px;
+  width: 62px;
+  height: 62px;
   flex: 0 0 auto;
 }
 
@@ -1526,98 +1539,141 @@ button {
   font-family: var(--font-display);
   text-transform: uppercase;
   letter-spacing: 0.02em;
-  font-size: 12px;
+  font-size: 13.5px;
   font-weight: 600;
   color: var(--paper);
   text-align: center;
 }
 
-.prediction-badge-label.is-long { font-size: 9.5px; }
+.prediction-badge-label.is-long { font-size: 10px; }
 
-.prediction-card-headinfo {
-  flex: 1 1 auto;
-  min-width: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 3px;
-}
-
-.prediction-confidence {
+.prediction-tier-caption {
   font-size: 9.5px;
   font-family: var(--font-mono);
   text-transform: uppercase;
-  letter-spacing: 0.04em;
-  color: rgba(238,241,232,0.45);
+  letter-spacing: 0.05em;
+  color: rgba(238,241,232,0.4);
 }
 
-.tier-excellente .prediction-confidence { color: var(--signal); }
-.tier-bonne .prediction-confidence { color: var(--moss); }
-.tier-faible .prediction-confidence { color: var(--danger); }
+.tier-excellente .prediction-tier-caption { color: var(--signal); }
+.tier-bonne .prediction-tier-caption { color: var(--moss); }
+.tier-faible .prediction-tier-caption { color: var(--danger); }
 
-.prediction-time-row { display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; }
+.prediction-main {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  text-align: center;
+}
+
+.prediction-time-row { display: flex; align-items: baseline; justify-content: center; gap: 8px; flex-wrap: wrap; }
 
 .prediction-time {
   font-family: var(--font-mono);
-  font-size: 27px;
+  font-size: 30px;
   font-weight: 700;
   color: var(--paper);
+  letter-spacing: -0.01em;
 }
 
 .prediction-pace {
   font-family: var(--font-mono);
-  font-size: 12px;
-  color: rgba(238,241,232,0.55);
-}
-
-.prediction-range {
-  font-family: var(--font-mono);
-  font-size: 11px;
+  font-size: 12.5px;
   color: rgba(238,241,232,0.5);
-  margin: 2px 0 0;
-}
-
-.prediction-range b { color: rgba(238,241,232,0.75); font-weight: 600; }
-
-.prediction-endurance-note {
-  font-size: 11px;
-  line-height: 1.4;
-  color: rgba(238,241,232,0.65);
-  background: rgba(227,91,74,0.08);
-  border-left: 2px solid var(--danger);
-  padding: 6px 8px;
-  border-radius: 0 8px 8px 0;
-  margin: 2px 0 0;
 }
 
 .prediction-delta {
-  align-self: flex-start;
   font-family: var(--font-mono);
-  font-size: 11.5px;
+  font-size: 11px;
   font-weight: 600;
-  padding: 3px 9px;
+  padding: 2px 9px;
   border-radius: 999px;
+  cursor: default;
 }
 
 .prediction-delta.is-faster { background: rgba(139,195,74,0.18); color: var(--moss); }
 .prediction-delta.is-slower { background: rgba(227,91,74,0.18); color: var(--danger); }
 .prediction-delta.is-stable { background: rgba(238,241,232,0.07); color: rgba(238,241,232,0.5); }
 
-.prediction-spark-wrap { margin-top: 2px; }
+/* Fourchette : une seule barre visuelle porte à la fois le temps et
+   l'allure (bas / haut), plutôt que deux lignes de texte séparées. */
+.prediction-rangebar { margin-top: 16px; }
 
-.prediction-spark { width: 100%; height: 54px; display: block; }
-
-.prediction-spark-axis {
-  display: flex;
-  justify-content: space-between;
-  font-size: 9.5px;
-  font-family: var(--font-mono);
-  color: rgba(238,241,232,0.4);
-  margin-top: 2px;
+.prediction-rangebar-track {
+  position: relative;
+  height: 5px;
+  border-radius: 999px;
+  background: linear-gradient(90deg, var(--moss), var(--signal));
+  opacity: 0.55;
 }
 
-.prediction-basis { font-size: 11px; margin: 0; }
+.prediction-rangebar-marker {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 11px;
+  height: 11px;
+  border-radius: 50%;
+  background: var(--paper);
+  box-shadow: 0 0 0 3px var(--ink-soft), 0 0 0 4px rgba(238,241,232,0.25);
+  transform: translate(-50%, -50%);
+}
 
-.prediction-empty-text { font-size: 12.5px; margin: 4px 0 0; }
+.prediction-rangebar-labels {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 9px;
+}
+
+.prediction-rangebar-labels span {
+  display: flex;
+  flex-direction: column;
+  font-family: var(--font-mono);
+  font-size: 11.5px;
+  color: rgba(238,241,232,0.7);
+}
+
+.prediction-rangebar-labels span:last-child { align-items: flex-end; }
+
+.prediction-rangebar-labels small {
+  font-size: 10px;
+  color: rgba(238,241,232,0.4);
+  margin-top: 1px;
+}
+
+.prediction-spark-wrap { margin-top: 12px; }
+
+.prediction-spark { width: 100%; height: 34px; display: block; }
+
+.prediction-meta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.prediction-meta-count {
+  font-size: 10.5px;
+  font-family: var(--font-mono);
+  color: rgba(238,241,232,0.4);
+  cursor: default;
+}
+
+.prediction-endurance-flag {
+  font-size: 10px;
+  font-family: var(--font-mono);
+  color: var(--danger);
+  background: rgba(227,91,74,0.1);
+  padding: 2px 8px;
+  border-radius: 999px;
+  cursor: default;
+  white-space: nowrap;
+}
+
+.prediction-empty-text { font-size: 12px; margin: 0; color: rgba(238,241,232,0.5); }
+
 
 /* ---------- Modal de détail badge ---------- */
 
@@ -4423,7 +4479,7 @@ function predictionSparkline(history) {
   const valid = history.filter((h) => h.seconds != null);
   if (valid.length < 2) return "";
 
-  const width = 280, height = 54, padX = 6, padY = 8;
+  const width = 280, height = 34, padX = 6, padY = 6;
   const secondsList = valid.map((h) => h.seconds);
   const min = Math.min(...secondsList);
   const max = Math.max(...secondsList);
@@ -4443,7 +4499,8 @@ function predictionSparkline(history) {
     if (lastX != null) {
       segments.push(`<line x1="${lastX.toFixed(1)}" y1="${lastY.toFixed(1)}" x2="${x.toFixed(1)}" y2="${y.toFixed(1)}" stroke="var(--rust)" stroke-width="2" stroke-linecap="round" />`);
     }
-    dots.push(`<circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="2.6" fill="var(--signal)"><title>${formatTemps(h.seconds)}</title></circle>`);
+    const whenLabel = h.weeksAgo === 0 ? "aujourd'hui" : `il y a ${h.weeksAgo} sem.`;
+    dots.push(`<circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="2.6" fill="var(--signal)"><title>${formatTemps(h.seconds)} (${whenLabel})</title></circle>`);
     lastX = x; lastY = y;
   });
 
@@ -4461,15 +4518,15 @@ function predictionSparkline(history) {
 // score va de 0 à 1 ; score = null → anneau neutre (carte vide, pas assez
 // de données) au lieu d'un pourcentage de confiance.
 function predictionBadge(label, score) {
-  const r = 24;
+  const r = 27;
   const circumference = 2 * Math.PI * r;
   const pct = score == null ? 0 : Math.max(0.04, score); // un minimum visible même à faible score
   const offset = circumference * (1 - pct);
   return `
     <div class="prediction-badge">
-      <svg viewBox="0 0 54 54" class="prediction-badge-ring">
-        <circle cx="27" cy="27" r="${r}" class="ring-track" />
-        ${score != null ? `<circle cx="27" cy="27" r="${r}" class="ring-progress" stroke-dasharray="${circumference.toFixed(1)}" stroke-dashoffset="${offset.toFixed(1)}" />` : ""}
+      <svg viewBox="0 0 62 62" class="prediction-badge-ring">
+        <circle cx="31" cy="31" r="${r}" class="ring-track" />
+        ${score != null ? `<circle cx="31" cy="31" r="${r}" class="ring-progress" stroke-dasharray="${circumference.toFixed(1)}" stroke-dashoffset="${offset.toFixed(1)}" />` : ""}
       </svg>
       <span class="prediction-badge-label${label.length > 3 ? " is-long" : ""}">${label}</span>
     </div>
@@ -4480,12 +4537,10 @@ function predictionCard(label, current, previousSeconds) {
   if (!current) {
     return `
       <div class="prediction-card is-empty">
-        <div class="prediction-card-head">
+        <div class="prediction-card-top">
           ${predictionBadge(label, null)}
-          <div class="prediction-card-headinfo">
-            <p class="muted prediction-empty-text">Pas encore assez de performances sur cette distance pour l'estimer.</p>
-          </div>
         </div>
+        <p class="prediction-empty-text">Pas assez de données sur cette distance.</p>
       </div>
     `;
   }
@@ -4495,12 +4550,12 @@ function predictionCard(label, current, previousSeconds) {
   if (delta != null && Math.abs(delta) >= 1) {
     const faster = delta > 0;
     deltaHtml = `
-      <span class="prediction-delta ${faster ? "is-faster" : "is-slower"}" title="Évolution depuis ta dernière activité enregistrée">
-        ${faster ? "▼" : "▲"} ${formatDeltaSeconds(delta)} ${faster ? "gagnées" : "perdues"}
+      <span class="prediction-delta ${faster ? "is-faster" : "is-slower"}" title="${faster ? "Gagné" : "Perdu"} depuis ta dernière activité enregistrée : ${formatDeltaSeconds(delta)}">
+        ${faster ? "▼" : "▲"} ${formatDeltaSeconds(delta)}
       </span>
     `;
   } else if (delta != null) {
-    deltaHtml = `<span class="prediction-delta is-stable">Stable depuis ta dernière activité</span>`;
+    deltaHtml = `<span class="prediction-delta is-stable" title="Stable depuis ta dernière activité enregistrée">= stable</span>`;
   }
 
   const history = computePredictionHistory(state.allActivities, DISTANCE_METERS[label]);
@@ -4508,43 +4563,45 @@ function predictionCard(label, current, previousSeconds) {
 
   const scorePct = Math.round(current.confidence.score * 100);
   const avgAge = Math.round(current.avgAgeDays);
-  const ageLabel = avgAge <= 1 ? "quelques jours" : `${AGE_DAYS_FMT.format(avgAge)} jours en moyenne`;
+  const ageLabel = avgAge <= 1 ? "quelques jours" : `${AGE_DAYS_FMT.format(avgAge)} jours`;
 
   const targetKm = DISTANCE_METERS[label] / 1000;
   const paceLow = current.range.low / targetKm;   // borne rapide de la fourchette
   const paceHigh = current.range.high / targetKm; // borne lente de la fourchette
 
+  const countTitle = `${current.pointCount} performance${current.pointCount > 1 ? "s" : ""} prise${current.pointCount > 1 ? "s" : ""} en compte, âgée${current.pointCount > 1 ? "s" : ""} de ${ageLabel} en moyenne${current.topContribution ? ` · la plus déterminante pèse pour ${Math.round(current.topContribution.wShare * 100)} % du résultat` : ""}.`;
+
   let enduranceHtml = "";
   if (current.endurance && current.endurance.penalty > 0.004) {
     const longestKm = current.endurance.longestM ? (current.endurance.longestM / 1000).toFixed(1) : "0";
-    enduranceHtml = `
-      <p class="prediction-endurance-note">⚠ Peu de sorties proches de cette distance récemment (la plus longue fait ${longestKm} km) : le temps intègre une marge de prudence d'environ ${Math.round(current.endurance.penalty * 100)} % pour l'endurance spécifique manquante.</p>
-    `;
+    enduranceHtml = `<span class="prediction-endurance-flag" title="Peu de sorties proches de cette distance récemment (la plus longue fait ${longestKm} km) : marge de prudence d'environ ${Math.round(current.endurance.penalty * 100)} % appliquée pour l'endurance spécifique manquante.">⚠ endurance limitée</span>`;
   }
 
   return `
     <div class="prediction-card tier-${current.confidence.key}">
-      <div class="prediction-card-head">
+      <div class="prediction-card-top">
         ${predictionBadge(label, current.confidence.score)}
-        <div class="prediction-card-headinfo">
-          <span class="prediction-confidence">${current.confidence.label} · ${scorePct} %</span>
-          <div class="prediction-time-row">
-            <span class="prediction-time">${formatTemps(current.seconds)}</span>
-            <span class="prediction-pace">${formatPace(current.paceSecPerKm)} /km</span>
-          </div>
+        <span class="prediction-tier-caption" title="Score de fiabilité de cette prédiction">${current.confidence.label} · ${scorePct} %</span>
+      </div>
+      <div class="prediction-main">
+        <div class="prediction-time-row">
+          <span class="prediction-time">${formatTemps(current.seconds)}</span>
+          <span class="prediction-pace">${formatPace(current.paceSecPerKm)} /km</span>
+        </div>
+        ${deltaHtml}
+      </div>
+      <div class="prediction-rangebar" title="Fourchette estimée compte tenu de la dispersion de tes performances">
+        <div class="prediction-rangebar-track"><div class="prediction-rangebar-marker"></div></div>
+        <div class="prediction-rangebar-labels">
+          <span>${formatTemps(current.range.low)}<small>${formatPace(paceLow)} /km</small></span>
+          <span>${formatTemps(current.range.high)}<small>${formatPace(paceHigh)} /km</small></span>
         </div>
       </div>
-      <p class="prediction-range">Temps estimé : <b>${formatTemps(current.range.low)}</b> — <b>${formatTemps(current.range.high)}</b></p>
-      <p class="prediction-range">Allure estimée : <b>${formatPace(paceLow)}</b> — <b>${formatPace(paceHigh)}</b> /km</p>
-      ${deltaHtml}
-      ${spark ? `
-        <div class="prediction-spark-wrap">
-          ${spark}
-          <div class="prediction-spark-axis"><span>Il y a 8 sem.</span><span>Aujourd'hui</span></div>
-        </div>
-      ` : ""}
-      <p class="muted prediction-basis">${current.pointCount} performance${current.pointCount > 1 ? "s" : ""} prise${current.pointCount > 1 ? "s" : ""} en compte, âgée${current.pointCount > 1 ? "s" : ""} de ${ageLabel}${current.topContribution ? ` · la plus déterminante pèse pour ${Math.round(current.topContribution.wShare * 100)} % du résultat` : ""}.</p>
-      ${enduranceHtml}
+      ${spark ? `<div class="prediction-spark-wrap">${spark}</div>` : ""}
+      <div class="prediction-meta">
+        <span class="prediction-meta-count" title="${countTitle}">${current.pointCount} perf. prise${current.pointCount > 1 ? "s" : ""} en compte</span>
+        ${enduranceHtml}
+      </div>
     </div>
   `;
 }
@@ -4589,7 +4646,7 @@ function predictionsSection() {
   return `
     <section class="panel">
       <h2>Prédictions de chrono</h2>
-      <p class="muted">Ces temps représentent un effort de compétition maximal, pas ton allure d'entraînement : une sortie tranquille est d'abord ramenée à son équivalent "effort de course" selon son type (une séance en endurance fondamentale ne reflète pas ce que tu es capable de faire à fond), puis pondérée selon sa fiabilité, son ancienneté et son écart à la distance visée, avant ajustement par ton assiduité des 8 dernières semaines.</p>
+      <p class="muted" title="Une sortie tranquille est d'abord ramenée à son équivalent effort de course selon son type, puis pondérée selon sa fiabilité, son ancienneté et son écart à la distance visée, avant ajustement par ton assiduité des 8 dernières semaines.">Temps estimés à effort de compétition maximal, pas à ton allure d'entraînement.</p>
       ${assiduiteSummary(assiduite)}
       <div class="prediction-grid">${cardsHtml}</div>
     </section>
