@@ -1674,6 +1674,83 @@ button {
 
 .prediction-empty-text { font-size: 12px; margin: 0; color: rgba(238,241,232,0.5); }
 
+/* Mobile : 2 colonnes compactes (3 lignes) + Marathon centré en dernière
+   ligne, plutôt qu'une seule colonne qui oblige à scroller longtemps. */
+@media (max-width: 560px) {
+  .prediction-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 8px;
+  }
+
+  .prediction-card {
+    padding: 10px 8px 9px;
+    border-radius: 12px;
+  }
+
+  .prediction-card.is-empty {
+    padding: 12px 8px;
+    gap: 6px;
+  }
+
+  .prediction-card-top {
+    gap: 3px;
+    padding-bottom: 8px;
+    margin-bottom: 8px;
+  }
+
+  .prediction-badge {
+    width: 40px;
+    height: 40px;
+  }
+
+  .prediction-badge-label {
+    font-size: 9.5px;
+  }
+
+  .prediction-badge-label.is-long { font-size: 7.5px; }
+
+  .prediction-tier-caption { font-size: 8px; }
+
+  .prediction-time { font-size: 18px; }
+
+  .prediction-pace { font-size: 9.5px; }
+
+  .prediction-delta {
+    font-size: 9px;
+    padding: 1px 6px;
+  }
+
+  .prediction-rangebar { margin-top: 8px; }
+
+  .prediction-rangebar-labels span { font-size: 9px; }
+
+  .prediction-rangebar-labels small { font-size: 8px; }
+
+  .prediction-spark-wrap { margin-top: 6px; }
+
+  .prediction-spark { height: 22px; }
+
+  .prediction-meta { margin-top: 6px; gap: 4px; }
+
+  .prediction-meta-count { font-size: 8.5px; }
+
+  .prediction-endurance-flag {
+    font-size: 8px;
+    padding: 1px 5px;
+    white-space: normal;
+  }
+
+  .prediction-empty-text { font-size: 10px; }
+
+  /* Marathon = dernière carte de DISTANCE_ORDER : centrée, seule sur sa
+     ligne, un peu plus large que les cartes en grille pour rester lisible. */
+  .prediction-card:last-child {
+    grid-column: 1 / -1;
+    width: min(70%, 220px);
+    margin: 0 auto;
+  }
+}
+
 
 /* ---------- Modal de détail badge ---------- */
 
