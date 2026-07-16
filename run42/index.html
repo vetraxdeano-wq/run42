@@ -665,6 +665,39 @@ button {
   background-image: radial-gradient(circle, rgba(240,185,58,0.45) 1.5px, transparent 1.6px);
 }
 
+.activity-accolades {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 8px;
+}
+
+.activity-accolade-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-family: var(--font-body);
+  font-size: 12px;
+  font-weight: 600;
+  border-radius: 8px;
+  padding: 5px 10px;
+}
+
+.activity-accolade-badge.tier-gold {
+  color: #241a04;
+  background: linear-gradient(135deg, #ffe27a 0%, #f0b93a 100%);
+}
+
+.activity-accolade-badge.tier-silver {
+  color: #22262a;
+  background: linear-gradient(135deg, #eef1f2 0%, #b9c2c8 100%);
+}
+
+.activity-accolade-badge.tier-bronze {
+  color: #2a1608;
+  background: linear-gradient(135deg, #e3a877 0%, #b3702f 100%);
+}
+
 .activity-title {
   font-family: var(--font-body);
   font-size: 14.5px;
@@ -1688,6 +1721,20 @@ button {
 }
 .btn-chip:hover { background: rgba(238,241,232,0.14); }
 
+.sort-chip-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 12px 0 16px;
+}
+
+.sort-chip.is-active {
+  background: var(--gradient-accent);
+  border-color: transparent;
+  color: var(--ink);
+  font-weight: 600;
+}
+
 .panel-subtitle {
   margin: 18px 0 8px;
   font-size: 14px;
@@ -1830,6 +1877,7 @@ let state = {
   recordFormOpen: false,
   recordSaving: false,
   accountView: "apercu",
+  accountActivitiesSort: { field: "date", dir: "desc" }, // tri de la liste "Activités" (sous-onglet Mon compte)
   chartFullYear: false,
   badgeModal: null,        // { type: 'distance'|'duration', index } | null
   badgeModalSort: "desc",  // 'desc' | 'asc' — tri des dates d'obtention
@@ -2153,6 +2201,50 @@ function computeAllBestEffortsByLabel(activities) {
   }
 
   return byLabel;
+}
+
+const MEDAL_ICONS = { 1: "🥇", 2: "🥈", 3: "🥉" };
+
+// Petites mentions "presque record" : pour chaque distance de course, on
+// signale les 2e et 3e meilleures perfs (la 1re est déjà couverte par le
+// badge doré "Record personnel" figé sur l'activité). On ajoute aussi un
+// classement à part des sorties les plus longues (toutes distances
+// confondues), qui n'a rien à voir avec les distances de référence.
+// Retourne un objet { activity_id: [{ icon, text, tier }] }.
+function computeActivityAccolades(activities) {
+  const accolades = {};
+  const add = (id, entry) => {
+    if (!accolades[id]) accolades[id] = [];
+    accolades[id].push(entry);
+  };
+
+  const byLabel = computeAllBestEffortsByLabel(activities);
+  for (const label of DISTANCE_ORDER) {
+    byLabel[label].slice(0, 3).forEach((entry, i) => {
+      const place = i + 1;
+      if (place === 1) return; // déjà signalé par le badge "Record personnel"
+      add(entry.activity_id, {
+        icon: MEDAL_ICONS[place],
+        text: `${place}e meilleure perf ${label}`,
+        tier: place === 2 ? "silver" : "bronze",
+      });
+    });
+  }
+
+  const byDistance = [...(activities || [])]
+    .filter((a) => a.distance_m)
+    .sort((a, b) => b.distance_m - a.distance_m)
+    .slice(0, 3);
+  byDistance.forEach((a, i) => {
+    const place = i + 1;
+    add(a.id, {
+      icon: MEDAL_ICONS[place],
+      text: place === 1 ? "Sortie la plus longue" : `${place}e sortie la plus longue`,
+      tier: place === 1 ? "gold" : place === 2 ? "silver" : "bronze",
+    });
+  });
+
+  return accolades;
 }
 
 async function saveActivity(formData) {
@@ -3268,7 +3360,7 @@ function recordsRankingModal() {
   `;
 }
 
-function activityRow(a) {
+function activityRow(a, accolades) {
   const km = (a.distance_m / 1000).toFixed(2);
   const allure = formatTemps(a.allure_moyenne) + "/km";
   const jour = new Date(a.date + "T00:00:00").toLocaleDateString("fr-FR", { day: "numeric" });
@@ -3279,6 +3371,9 @@ function activityRow(a) {
   // dans personal_records.
   const prBadge = isPR
     ? `<div class="activity-pr-badge">🏆 <span>Record personnel — ${a.pr_labels.join(", ")}</span></div>`
+    : "";
+  const accoladesHtml = (accolades || []).length
+    ? `<div class="activity-accolades">${accolades.map((ac) => `<div class="activity-accolade-badge tier-${ac.tier}">${ac.icon} <span>${ac.text}</span></div>`).join("")}</div>`
     : "";
   const typeBadge = a.type_activite
     ? `<span class="activity-type-badge" style="--type-color: ${activityTypeColor(a.type_activite)}">${a.type_activite}</span>`
@@ -3314,6 +3409,7 @@ function activityRow(a) {
         </div>
         ${fractionneHtml}
         ${prBadge}
+        ${accoladesHtml}
       </div>
       <div class="dossard-actions">
         <button class="activity-edit-btn" data-id="${a.id}" aria-label="Modifier cette course" title="Modifier">${ICONS.edit}</button>
@@ -3335,6 +3431,11 @@ function activityDetailModal() {
   const isPR = !!(a.pr_labels && a.pr_labels.length);
   const prBadge = isPR
     ? `<div class="activity-pr-badge">🏆 <span>Record personnel — ${a.pr_labels.join(", ")}</span></div>`
+    : "";
+
+  const accolades = computeActivityAccolades(state.allActivities)[a.id] || [];
+  const accoladesHtml = accolades.length
+    ? `<div class="activity-accolades">${accolades.map((ac) => `<div class="activity-accolade-badge tier-${ac.tier}">${ac.icon} <span>${ac.text}</span></div>`).join("")}</div>`
     : "";
 
   const typeBadge = a.type_activite
@@ -3379,6 +3480,7 @@ function activityDetailModal() {
           ${a.titre ? `<p class="muted activity-detail-subdate">${dateFormatted}</p>` : ""}
           ${typeBadge}
           ${prBadge}
+          ${accoladesHtml}
         </div>
         <div class="activity-detail-stats">
           <div class="activity-detail-stat stat-primary">
@@ -3413,12 +3515,13 @@ function activityDetailModal() {
 // ---------- Onglets ----------
 
 function tabActivities() {
+  const accoladesMap = computeActivityAccolades(state.allActivities);
   return `
     ${
       state.loading
         ? `<p class="muted">Chargement…</p>`
         : state.activities.length
-        ? `<div class="activity-list">${state.activities.map(activityRow).join("")}</div>`
+        ? `<div class="activity-list">${state.activities.map((a) => activityRow(a, accoladesMap[a.id])).join("")}</div>`
         : `<p class="muted">Aucune course enregistrée pour l'instant. Appuie sur + pour ajouter ta première course.</p>`
     }
   `;
@@ -3616,6 +3719,45 @@ function badgesSection() {
   `;
 }
 
+const ACTIVITIES_SORT_OPTIONS = [
+  { field: "date", label: "Date" },
+  { field: "distance_m", label: "Distance" },
+  { field: "duree_s", label: "Durée" },
+  { field: "allure_moyenne", label: "Allure" },
+];
+
+function activitiesListSection() {
+  const { field, dir } = state.accountActivitiesSort;
+  const accoladesMap = computeActivityAccolades(state.allActivities);
+
+  const sorted = [...state.allActivities].sort((a, b) => {
+    const va = field === "date" ? new Date(a.date).getTime() : (a[field] || 0);
+    const vb = field === "date" ? new Date(b.date).getTime() : (b[field] || 0);
+    return dir === "asc" ? va - vb : vb - va;
+  });
+
+  const sortButtonsHtml = ACTIVITIES_SORT_OPTIONS.map((opt) => {
+    const isActive = field === opt.field;
+    const arrow = isActive ? (dir === "asc" ? "↑" : "↓") : "";
+    return `<button class="btn-chip sort-chip ${isActive ? "is-active" : ""}" data-sort-field="${opt.field}">${opt.label} ${arrow}</button>`;
+  }).join("");
+
+  return `
+    <section class="panel">
+      <div class="panel-header-row">
+        <h2>Toutes tes activités</h2>
+        <span class="muted">${sorted.length} course${sorted.length > 1 ? "s" : ""}</span>
+      </div>
+      <div class="sort-chip-row">${sortButtonsHtml}</div>
+      ${
+        sorted.length
+          ? `<div class="activity-list">${sorted.map((a) => activityRow(a, accoladesMap[a.id])).join("")}</div>`
+          : `<p class="muted">Aucune course enregistrée pour l'instant.</p>`
+      }
+    </section>
+  `;
+}
+
 // ---------- Modale de détail d'un badge à paliers ----------
 
 function badgeDetailModal() {
@@ -3698,8 +3840,9 @@ function badgeDetailModal() {
 function accountSubnav() {
   return `
     <div class="account-subnav">
-      <button class="account-subnav-btn ${state.accountView !== "badges" ? "is-active" : ""}" data-view="apercu">Aperçu</button>
+      <button class="account-subnav-btn ${state.accountView === "apercu" ? "is-active" : ""}" data-view="apercu">Aperçu</button>
       <button class="account-subnav-btn ${state.accountView === "badges" ? "is-active" : ""}" data-view="badges">Badges</button>
+      <button class="account-subnav-btn ${state.accountView === "activites" ? "is-active" : ""}" data-view="activites">Activités</button>
     </div>
   `;
 }
@@ -3812,7 +3955,11 @@ function tabAccount() {
 
     ${accountSubnav()}
 
-    ${state.accountView === "badges" ? badgesSection() : apercuHtml}
+    ${
+      state.accountView === "badges" ? badgesSection()
+      : state.accountView === "activites" ? activitiesListSection()
+      : apercuHtml
+    }
   `;
 }
 
@@ -4171,6 +4318,15 @@ function attachHandlers() {
 
   document.querySelectorAll(".account-subnav-btn").forEach((btn) => {
     btn.addEventListener("click", () => setState({ accountView: btn.dataset.view }));
+  });
+
+  document.querySelectorAll(".sort-chip").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const field = btn.dataset.sortField;
+      const current = state.accountActivitiesSort;
+      const dir = current.field === field ? (current.dir === "asc" ? "desc" : "asc") : "desc";
+      setState({ accountActivitiesSort: { field, dir } });
+    });
   });
 
   const toggleRecordFormBtn = document.getElementById("btn-toggle-record-form");
