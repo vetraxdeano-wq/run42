@@ -202,7 +202,11 @@ button {
   border-radius: 14px;
   padding: 14px 16px 16px;
   box-shadow: 0 6px 18px -10px rgba(0,0,0,0.5);
+  cursor: pointer;
+  transition: background 0.15s ease;
 }
+.podium-block:hover,
+.podium-block:focus-visible { background: var(--ink-softer); }
 
 .podium-distance {
   margin: 0 0 12px;
@@ -233,6 +237,12 @@ button {
   max-width: 96px;
 }
 
+.podium-medal {
+  font-size: 16px;
+  line-height: 1;
+  margin-bottom: 4px;
+}
+
 .podium-time {
   font-family: var(--font-mono);
   font-size: 12.5px;
@@ -253,22 +263,28 @@ button {
   font-size: 13px;
 }
 
-.podium-step-1 .podium-bar { height: 64px; background: var(--gradient-accent); color: var(--ink); }
-.podium-step-2 .podium-bar { height: 46px; background: var(--moss); color: var(--ink); }
-.podium-step-3 .podium-bar { height: 32px; background: rgba(139,195,74,0.32); color: rgba(238,241,232,0.85); }
+.podium-step-1 .podium-bar { height: 64px; background: linear-gradient(150deg, #f7dd7a 0%, #d9a824 100%); color: #3a2a00; }
+.podium-step-2 .podium-bar { height: 46px; background: linear-gradient(150deg, #e6e9e6 0%, #b3bab3 100%); color: #262b26; }
+.podium-step-3 .podium-bar { height: 32px; background: linear-gradient(150deg, #e0a468 0%, #ab6a30 100%); color: #2a1400; }
 
 .podium-step.is-empty .podium-bar { background: rgba(238,241,232,0.07); color: rgba(238,241,232,0.3); }
 .podium-step.is-empty .podium-time { color: rgba(238,241,232,0.3); }
 
 .podium-step.is-linked { cursor: pointer; }
 .podium-step.is-linked:hover .podium-bar,
-.podium-step.is-linked:focus-visible .podium-bar { filter: brightness(1.15); }
+.podium-step.is-linked:focus-visible .podium-bar { filter: brightness(1.1); }
 
 .podium-tag {
   margin-top: 4px;
   font-family: var(--font-body);
   font-size: 9.5px;
   color: rgba(238,241,232,0.4);
+  text-align: center;
+}
+
+.podium-hint {
+  margin: 12px 0 0;
+  font-size: 11.5px;
   text-align: center;
 }
 
@@ -355,6 +371,45 @@ button {
   color: rgba(238,241,232,0.55);
 }
 .goal-dial.is-reached .goal-dial-days { color: var(--signal); }
+
+.goal-form-field { display: flex; flex-direction: column; gap: 8px; }
+.goal-form-label {
+  font-size: 13px;
+  color: rgba(238,241,232,0.7);
+}
+.segmented {
+  display: flex;
+  background: rgba(238,241,232,0.05);
+  border: 1px solid rgba(238,241,232,0.1);
+  border-radius: 12px;
+  padding: 4px;
+  gap: 4px;
+}
+.segmented-btn {
+  flex: 1;
+  border: none;
+  background: transparent;
+  color: rgba(238,241,232,0.55);
+  font-family: var(--font-body);
+  font-size: 13.5px;
+  font-weight: 600;
+  padding: 10px 8px;
+  border-radius: 9px;
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+.segmented-btn.is-active {
+  background: var(--gradient-accent);
+  color: var(--ink);
+}
+.segmented-btn:focus-visible { outline: 2px solid var(--signal); outline-offset: 2px; }
+
+.goal-form-target-input {
+  text-align: center;
+  font-size: 22px !important;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
 
 .card {
   background: var(--ink-soft);
@@ -1206,6 +1261,50 @@ button {
 }
 .badge-dates-list li.is-linked .li-arrow { opacity: 0.5; }
 
+.record-rank-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  max-height: 320px;
+  overflow-y: auto;
+}
+.record-rank-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 12px;
+  background: rgba(238,241,232,0.03);
+  border-radius: 10px;
+  font-family: var(--font-mono);
+  font-size: 13px;
+}
+.record-rank-row.is-linked { cursor: pointer; transition: background 0.15s ease; }
+.record-rank-row.is-linked:hover,
+.record-rank-row.is-linked:focus-visible { background: rgba(139,195,74,0.14); }
+.record-rank-row.is-best { border: 1px solid rgba(182,217,40,0.4); }
+.record-rank-rank {
+  color: rgba(238,241,232,0.5);
+  width: 26px;
+  flex-shrink: 0;
+}
+.record-rank-row.is-best .record-rank-rank { color: var(--signal); }
+.record-rank-time {
+  font-weight: 600;
+  min-width: 70px;
+}
+.record-rank-date {
+  color: rgba(238,241,232,0.6);
+  flex: 1;
+}
+.record-rank-tag {
+  font-family: var(--font-body);
+  font-size: 10.5px;
+  color: rgba(238,241,232,0.4);
+}
+
 .badge-speed-section {
   margin-top: 22px;
   padding-top: 16px;
@@ -1502,6 +1601,7 @@ let state = {
   chartFullYear: false,
   badgeModal: null,        // { type: 'distance'|'duration', index } | null
   badgeModalSort: "desc",  // 'desc' | 'asc' — tri des dates d'obtention
+  recordsModal: null,      // distance_label affiché dans la modale de classement des perfs, ou null
   goalEditing: false,      // formulaire d'objectif ouvert (création ou modification)
   goalSaving: false,
   notifications: [],       // toasts de nouveaux paliers/badges débloqués
@@ -2791,13 +2891,17 @@ function topEntriesForLabel(label, prs, rankingsByLabel) {
 
 // ---------- Podium des records — top 3 directement affiché par distance ----------
 
+const PODIUM_MEDALS = { 1: "🥇", 2: "🥈", 3: "🥉" };
+
 function recordsPodium(prs, rankingsByLabel) {
   if (!prs.length) {
     return `<p class="muted">Aucune course enregistrée pour l'instant. Ajoute ta première course pour voir apparaître tes records.</p>`;
   }
 
   const blocks = ["1K", "5K", "10K", "Semi", "Marathon"].map((label) => {
-    const top3 = topEntriesForLabel(label, prs, rankingsByLabel).slice(0, 3);
+    const allEntries = topEntriesForLabel(label, prs, rankingsByLabel);
+    const top3 = allEntries.slice(0, 3);
+    const openable = allEntries.length > 0;
 
     if (!top3.length) {
       return `
@@ -2816,6 +2920,7 @@ function recordsPodium(prs, rankingsByLabel) {
       if (!e) {
         return `
           <div class="podium-step podium-step-${rank} is-empty">
+            <span class="podium-medal">${PODIUM_MEDALS[rank]}</span>
             <span class="podium-time">—</span>
             <div class="podium-bar">${rank}</div>
           </div>
@@ -2828,6 +2933,7 @@ function recordsPodium(prs, rankingsByLabel) {
       return `
         <div class="podium-step podium-step-${rank} ${linked ? "is-linked" : ""}"
              ${linked ? `data-activity-id="${e.activity_id}" role="button" tabindex="0"` : ""}>
+          <span class="podium-medal">${PODIUM_MEDALS[rank]}</span>
           <span class="podium-time">${formatTemps(e.temps_s)}</span>
           <div class="podium-bar">${rank}</div>
           ${tag ? `<span class="podium-tag">${tag}</span>` : ""}
@@ -2836,14 +2942,51 @@ function recordsPodium(prs, rankingsByLabel) {
     }).join("");
 
     return `
-      <div class="podium-block">
+      <div class="podium-block" ${openable ? `data-records-label="${label}" role="button" tabindex="0"` : ""}>
         <h4 class="podium-distance">${label}</h4>
         <div class="podium-row">${steps}</div>
+        ${openable ? `<p class="muted podium-hint">Touche pour voir le classement complet</p>` : ""}
       </div>
     `;
   }).join("");
 
   return `<div class="podium-list">${blocks}</div>`;
+}
+
+// ---------- Modale de classement complet des performances sur une distance ----------
+
+function recordsRankingModal() {
+  const label = state.recordsModal;
+  if (!label) return "";
+
+  const rankingsByLabel = computeAllBestEffortsByLabel(state.allActivities);
+  const allEntries = topEntriesForLabel(label, state.prs, rankingsByLabel);
+
+  const rowsHtml = allEntries.length
+    ? allEntries.map((e, i) => `
+        <li class="record-rank-row ${e.activity_id ? "is-linked" : ""} ${i === 0 ? "is-best" : ""}"
+            ${e.activity_id ? `data-activity-id="${e.activity_id}" role="button" tabindex="0"` : ""}>
+          <span class="record-rank-rank">${PODIUM_MEDALS[i + 1] || `#${i + 1}`}</span>
+          <span class="record-rank-time">${formatTemps(e.temps_s)}</span>
+          <span class="record-rank-date">${e.date ? formatDateFr(e.date) : ""}</span>
+          ${!e.activity_id ? `<span class="record-rank-tag">ajouté manuellement</span>`
+            : e.source === "splits" ? `<span class="record-rank-tag">extrait d'une course de ${(e.activityDistanceM / 1000).toFixed(1)} km</span>`
+            : ""}
+        </li>
+      `).join("")
+    : `<p class="muted">Pas encore de performance enregistrée sur cette distance.</p>`;
+
+  return `
+    <div class="modal-overlay" id="records-detail-overlay">
+      <div class="modal-card">
+        <button class="modal-close" id="records-detail-close" aria-label="Fermer">✕</button>
+        <div class="modal-badge-header">
+          <h3>Tes performances — ${label}</h3>
+        </div>
+        <ul class="record-rank-list">${rowsHtml}</ul>
+      </div>
+    </div>
+  `;
 }
 
 function activityRow(a) {
@@ -2970,6 +3113,7 @@ function tabRecords() {
         <p class="muted">Configure ton profil dans l'onglet Programme pour obtenir un plan adapté.</p>
       </div>
     </section>
+    ${state.recordsModal ? recordsRankingModal() : ""}
   `;
 }
 
@@ -3418,24 +3562,29 @@ function goalPanel() {
 
 function goalForm(goal) {
   const metric = goal?.metric || "distance";
+  const mode = goal?.mode || "hebdo";
   return `
     <form id="goal-form" class="activity-form">
       <p class="muted">Fixe-toi un objectif de distance ou de durée sur la semaine ou le mois, et suis ta progression au fil de tes activités.</p>
-      <label>Fréquence
-        <select id="f-goal-mode" required>
-          <option value="hebdo" ${goal?.mode === "hebdo" ? "selected" : ""}>Hebdomadaire</option>
-          <option value="mensuel" ${goal?.mode === "mensuel" ? "selected" : ""}>Mensuel</option>
-        </select>
-      </label>
-      <label>Type d'objectif
-        <select id="f-goal-metric" required>
-          <option value="distance" ${metric === "distance" ? "selected" : ""}>Distance</option>
-          <option value="duree" ${metric === "duree" ? "selected" : ""}>Durée</option>
-        </select>
-      </label>
+      <div class="goal-form-field">
+        <span class="goal-form-label">Fréquence</span>
+        <div class="segmented" data-target="f-goal-mode">
+          <button type="button" class="segmented-btn ${mode === "hebdo" ? "is-active" : ""}" data-value="hebdo">Semaine</button>
+          <button type="button" class="segmented-btn ${mode === "mensuel" ? "is-active" : ""}" data-value="mensuel">Mois</button>
+        </div>
+        <input type="hidden" id="f-goal-mode" value="${mode}" />
+      </div>
+      <div class="goal-form-field">
+        <span class="goal-form-label">Type d'objectif</span>
+        <div class="segmented" data-target="f-goal-metric">
+          <button type="button" class="segmented-btn ${metric === "distance" ? "is-active" : ""}" data-value="distance">Distance</button>
+          <button type="button" class="segmented-btn ${metric === "duree" ? "is-active" : ""}" data-value="duree">Durée</button>
+        </div>
+        <input type="hidden" id="f-goal-metric" value="${metric}" />
+      </div>
       <label id="f-goal-target-label">
         ${metric === "duree" ? "Durée cible (minutes)" : "Distance cible (km)"}
-        <input type="number" id="f-goal-target" min="0.1" step="0.1" value="${goal?.target ?? ""}" required />
+        <input type="number" id="f-goal-target" class="goal-form-target-input" min="0.1" step="0.1" value="${goal?.target ?? ""}" required />
       </label>
       <button type="submit" class="btn-primary" ${state.goalSaving ? "disabled" : ""}>
         ${state.goalSaving ? "Enregistrement…" : "Enregistrer mon objectif"}
@@ -3701,6 +3850,45 @@ function attachHandlers() {
     });
   });
 
+  document.querySelectorAll(".podium-block[data-records-label]").forEach((block) => {
+    const open = (e) => {
+      // Un clic sur une marche du podium (temps déjà cliquable vers une
+      // activité) ne doit pas aussi ouvrir la modale de classement complet.
+      if (e && e.target && e.target.closest(".podium-step")) return;
+      setState({ recordsModal: block.dataset.recordsLabel });
+    };
+    block.addEventListener("click", open);
+    block.addEventListener("keydown", (e) => {
+      if ((e.key === "Enter" || e.key === " ") && !e.target.closest(".podium-step")) {
+        e.preventDefault();
+        open();
+      }
+    });
+  });
+
+  const recordsDetailOverlay = document.getElementById("records-detail-overlay");
+  if (recordsDetailOverlay) {
+    recordsDetailOverlay.addEventListener("click", (e) => {
+      if (e.target === recordsDetailOverlay) setState({ recordsModal: null });
+    });
+  }
+
+  const recordsDetailClose = document.getElementById("records-detail-close");
+  if (recordsDetailClose) {
+    recordsDetailClose.addEventListener("click", () => setState({ recordsModal: null }));
+  }
+
+  document.querySelectorAll(".record-rank-row.is-linked").forEach((row) => {
+    const goToActivity = () => setState({ recordsModal: null, activityDetailId: row.dataset.activityId });
+    row.addEventListener("click", goToActivity);
+    row.addEventListener("keydown", (e) => {
+      if (e.key === "Enter" || e.key === " ") {
+        e.preventDefault();
+        goToActivity();
+      }
+    });
+  });
+
   const editPseudoBtn = document.getElementById("btn-edit-pseudo");
   if (editPseudoBtn) editPseudoBtn.addEventListener("click", () => setState({ pseudoEditing: true, error: null }));
 
@@ -3750,14 +3938,24 @@ function attachHandlers() {
     });
   }
 
-  const goalMetricSelect = document.getElementById("f-goal-metric");
+  const goalMetricHiddenInput = document.getElementById("f-goal-metric");
   const goalTargetLabel = document.getElementById("f-goal-target-label");
-  if (goalMetricSelect && goalTargetLabel) {
-    goalMetricSelect.addEventListener("change", () => {
-      goalTargetLabel.firstChild.textContent =
-        goalMetricSelect.value === "duree" ? "Durée cible (minutes)" : "Distance cible (km)";
+
+  document.querySelectorAll(".segmented[data-target]").forEach((group) => {
+    const hiddenInput = document.getElementById(group.dataset.target);
+    if (!hiddenInput) return;
+    group.querySelectorAll(".segmented-btn").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        group.querySelectorAll(".segmented-btn").forEach((b) => b.classList.remove("is-active"));
+        btn.classList.add("is-active");
+        hiddenInput.value = btn.dataset.value;
+        if (hiddenInput === goalMetricHiddenInput && goalTargetLabel) {
+          goalTargetLabel.firstChild.textContent =
+            btn.dataset.value === "duree" ? "Durée cible (minutes)" : "Distance cible (km)";
+        }
+      });
     });
-  }
+  });
 
   const goalFormEl = document.getElementById("goal-form");
   if (goalFormEl) {
