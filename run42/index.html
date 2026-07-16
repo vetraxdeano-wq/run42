@@ -2261,7 +2261,7 @@ button {
   display: grid;
   grid-template-columns: 90px 1fr;
   gap: 14px;
-  align-items: center;
+  align-items: start;
   padding: 14px 0;
   border-bottom: 1px solid rgba(139,195,74,0.2);
 }
@@ -2272,9 +2272,182 @@ button {
   font-family: var(--font-mono);
   font-size: 13px;
   color: rgba(238,241,232,0.65);
+  padding-top: 2px;
 }
 
 .program-desc { font-size: 14px; }
+
+.program-row-main {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.program-effort {
+  font-size: 12.5px;
+  color: rgba(238,241,232,0.55);
+  margin: 4px 0 0;
+  line-height: 1.4;
+}
+
+.session-cat-chip {
+  font-family: var(--font-mono);
+  font-size: 9.5px;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  border-radius: 999px;
+  padding: 2px 8px;
+  white-space: nowrap;
+}
+
+.session-cat-chip.cat-fondamentale {
+  color: var(--moss);
+  background: rgba(139,195,74,0.14);
+}
+
+.session-cat-chip.cat-intensite {
+  color: var(--signal);
+  background: rgba(182,217,40,0.14);
+}
+
+/* ---------- Sélecteur de programmes (options générées + score IA) ---------- */
+
+.program-options-intro {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.program-options-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+  gap: 12px;
+  margin: 14px 0 4px;
+}
+
+.program-option-card {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  text-align: left;
+  background: var(--ink-soft);
+  border: 1px solid rgba(238,241,232,0.1);
+  border-radius: 14px;
+  padding: 16px 16px 14px;
+  box-shadow: 0 6px 18px -10px rgba(0,0,0,0.5);
+}
+
+.program-option-card.tier-or {
+  border-color: var(--signal);
+  box-shadow: 0 0 0 1px rgba(182,217,40,0.25), 0 6px 18px -10px rgba(0,0,0,0.5);
+}
+.program-option-card.tier-argent { border-color: rgba(207,216,210,0.45); }
+.program-option-card.tier-bronze { border-color: rgba(205,138,82,0.4); }
+
+.program-option-card.is-selected {
+  outline: 2px solid var(--rust);
+  outline-offset: 2px;
+}
+
+.program-option-top {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.program-option-medal { font-size: 20px; line-height: 1; }
+
+.program-option-tier-label {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: rgba(238,241,232,0.5);
+}
+
+.program-option-title {
+  font-family: var(--font-display);
+  font-size: 16px;
+  font-weight: 600;
+  margin: 0;
+}
+
+.program-option-pitch {
+  font-size: 12.5px;
+  color: rgba(238,241,232,0.6);
+  line-height: 1.45;
+  margin: 0;
+}
+
+.program-option-stats {
+  display: flex;
+  gap: 14px;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: rgba(238,241,232,0.75);
+}
+
+.program-option-stats strong { color: var(--paper); font-size: 13px; }
+
+.program-option-score {
+  margin-top: auto;
+  align-self: flex-start;
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  color: var(--ink);
+  background: var(--gradient-accent);
+  border-radius: 999px;
+  padding: 3px 10px;
+}
+
+.program-ratio-bar {
+  display: flex;
+  height: 8px;
+  width: 100%;
+  border-radius: 999px;
+  overflow: hidden;
+  background: rgba(238,241,232,0.1);
+}
+
+.program-ratio-fill-fond { background: var(--moss); height: 100%; }
+.program-ratio-fill-int { background: var(--signal); height: 100%; }
+
+.program-ratio-legend {
+  display: flex;
+  justify-content: space-between;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: rgba(238,241,232,0.6);
+  margin-top: 6px;
+}
+
+.program-ratio-legend .is-fond { color: var(--moss); }
+.program-ratio-legend .is-int { color: var(--signal); }
+
+.program-detail-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-bottom: 6px;
+}
+
+.program-active-badge {
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: var(--ink);
+  background: var(--gradient-accent);
+  border-radius: 999px;
+  padding: 4px 10px;
+  white-space: nowrap;
+}
 
 .activity-form select {
   padding: 10px 12px;
@@ -2353,6 +2526,8 @@ let state = {
   notifications: [],       // toasts de nouveaux paliers/badges débloqués
   activityDetailId: null,  // id de l'activité affichée dans la modale de détail
   editingActivityId: null, // id de l'activité en cours de modification (formulaire add-activity réutilisé)
+  programmeSelectedId: null, // id du programme prévisualisé dans l'onglet Programme (avant activation)
+  programmeActivating: false,
 };
 
 function setState(patch) {
@@ -2453,13 +2628,56 @@ const CONTRAINTES = [
   { id: "peu-de-temps", label: "Peu de temps disponible" },
 ];
 
-const OBJECTIF_SESSIONS = {
-  "perte-poids": ["Footing facile régulier", "Fractionné léger (30/30)", "Sortie longue tranquille", "Récupération active + gainage", "Footing avec accélérations"],
-  "forme": ["Footing facile", "Fractionné léger", "Sortie longue tranquille", "Récupération active", "Footing + gammes"],
-  "5k": ["Footing facile", "VMA courte (200-400m)", "Seuil (allure soutenue)", "Sortie longue modérée", "Footing de récupération"],
-  "10k": ["Footing facile", "VMA moyenne (400-1000m)", "Seuil", "Sortie longue", "Footing de récupération"],
-  "semi": ["Footing facile", "Seuil", "Sortie longue progressive", "Fractionné long (1000-2000m)", "Footing de récupération"],
-  "marathon": ["Footing facile", "Sortie longue avec allure marathon", "Seuil", "Fractionné", "Footing de récupération", "Sortie longue"],
+// Catalogue des séances par objectif. Chaque séance porte une catégorie :
+//  - 'fondamentale' = endurance fondamentale (allure facile / conversationnelle,
+//    y compris la sortie longue, qui reste un travail aérobie de base)
+//  - 'intensite'    = travail qualitatif (VMA, seuil, allure objectif soutenue…)
+// C'est cette catégorisation qui permet d'imposer la règle 60-70% d'endurance
+// fondamentale, en séances comme en volume.
+const SESSION_LIBRARY = {
+  "perte-poids": [
+    { type: "Footing facile", cat: "fondamentale", effort: "Allure très confortable, on peut parler sans être essoufflé" },
+    { type: "Footing avec accélérations", cat: "fondamentale", effort: "Base facile, quelques lignes droites plus vives en fin de séance" },
+    { type: "Footing de récupération", cat: "fondamentale", effort: "Très facile, coupe-circuit après une séance difficile" },
+    { type: "Sortie longue tranquille", cat: "fondamentale", effort: "Allure facile tenue sur la durée, sans à-coups" },
+    { type: "Fractionné léger (30/30)", cat: "intensite", effort: "Alternance courte, effort modéré à soutenu" },
+  ],
+  forme: [
+    { type: "Footing facile", cat: "fondamentale", effort: "Allure très confortable" },
+    { type: "Footing + gammes", cat: "fondamentale", effort: "Facile, avec éducatifs de course en fin de séance" },
+    { type: "Footing de récupération", cat: "fondamentale", effort: "Très facile" },
+    { type: "Sortie longue tranquille", cat: "fondamentale", effort: "Allure facile sur la durée" },
+    { type: "Fractionné léger", cat: "intensite", effort: "Effort modéré, alternance courte" },
+  ],
+  "5k": [
+    { type: "Footing facile", cat: "fondamentale", effort: "Allure conversationnelle" },
+    { type: "Footing de récupération", cat: "fondamentale", effort: "Très facile, après une séance intense" },
+    { type: "Sortie longue modérée", cat: "fondamentale", effort: "Allure facile à modérée, durée soutenue" },
+    { type: "VMA courte (200-400m)", cat: "intensite", effort: "Effort proche de la VMA, récupération courte" },
+    { type: "Seuil (allure soutenue)", cat: "intensite", effort: "Allure soutenue mais tenable, juste sous le rouge" },
+  ],
+  "10k": [
+    { type: "Footing facile", cat: "fondamentale", effort: "Allure conversationnelle" },
+    { type: "Footing de récupération", cat: "fondamentale", effort: "Très facile" },
+    { type: "Sortie longue", cat: "fondamentale", effort: "Allure facile, la plus longue séance de la semaine" },
+    { type: "VMA moyenne (400-1000m)", cat: "intensite", effort: "Effort proche VMA, récupération courte à moyenne" },
+    { type: "Seuil", cat: "intensite", effort: "Allure soutenue et régulière" },
+  ],
+  semi: [
+    { type: "Footing facile", cat: "fondamentale", effort: "Allure conversationnelle" },
+    { type: "Footing de récupération", cat: "fondamentale", effort: "Très facile" },
+    { type: "Sortie longue progressive", cat: "fondamentale", effort: "Allure facile, accélère légèrement en fin de sortie" },
+    { type: "Seuil", cat: "intensite", effort: "Allure soutenue et régulière" },
+    { type: "Fractionné long (1000-2000m)", cat: "intensite", effort: "Effort soutenu proche allure semi" },
+  ],
+  marathon: [
+    { type: "Footing facile", cat: "fondamentale", effort: "Allure conversationnelle" },
+    { type: "Footing de récupération", cat: "fondamentale", effort: "Très facile" },
+    { type: "Sortie longue avec allure marathon", cat: "fondamentale", effort: "Facile puis quelques segments à l'allure visée en fin de sortie" },
+    { type: "Sortie longue", cat: "fondamentale", effort: "Allure facile, volume important" },
+    { type: "Seuil", cat: "intensite", effort: "Allure soutenue et régulière" },
+    { type: "Fractionné", cat: "intensite", effort: "Effort soutenu, travail de la VMA" },
+  ],
 };
 
 const NIVEAU_SUFFIX = {
@@ -2469,35 +2687,211 @@ const NIVEAU_SUFFIX = {
   confirme: " (charge élevée, récupération courte)",
 };
 
-function generateProgram(profil) {
-  let pool = OBJECTIF_SESSIONS[profil.objectif] || OBJECTIF_SESSIONS.forme;
+// Plafond du nombre de séances d'intensité jugé raisonnable par niveau —
+// évite de dépasser la fourchette 60-70% d'endurance fondamentale même sur
+// un profil avec beaucoup de jours disponibles.
+const NIVEAU_INTENSITE_CAP = {
+  debutant: 1,
+  intermediaire: 2,
+  avance: 2,
+  confirme: 3,
+};
 
-  // Si le coureur ne veut pas de fractionné/VMA, on retire ce type de séance du pool
-  const contraintes = Array.isArray(profil.contraintes) ? profil.contraintes : [];
-  if (contraintes.includes("pas-fractionne")) {
-    const sansFractionne = pool.filter((s) => !/fractionné|vma/i.test(s));
-    if (sansFractionne.length) pool = sansFractionne;
+// Point médian (en km) de chaque tranche de volume hebdomadaire déclarée dans le profil
+const VOLUME_MIDPOINT_KM = { "moins-15": 12, "15-30": 22, "30-50": 40, "50-plus": 58 };
+// Point médian (en minutes) de chaque tranche de durée de séance, pour estimer
+// un volume quand le profil n'a pas renseigné de volume hebdomadaire
+const DUREE_MIDPOINT_MIN = { "30-45": 37, "45-60": 52, "60-90": 75, "90-plus": 100 };
+
+function estimateWeeklyVolumeKm(profil, joursCount) {
+  if (profil.volumeHebdo && VOLUME_MIDPOINT_KM[profil.volumeHebdo]) return VOLUME_MIDPOINT_KM[profil.volumeHebdo];
+  const dureeMin = DUREE_MIDPOINT_MIN[profil.dureeSeance] || 45;
+  const kmParSeance = dureeMin / 6.5; // ~6 min 30/km, allure facile générique
+  return Math.max(8, Math.round(kmParSeance * joursCount));
+}
+
+// Trois philosophies d'entraînement, chacune respectant le plancher de 60% et
+// le plafond de 70% d'endurance fondamentale, mais avec un curseur différent
+// à l'intérieur de cette fourchette — c'est ce qui distingue les 3 propositions.
+const PROGRAM_PHILOSOPHIES = [
+  {
+    id: "equilibre",
+    label: "Équilibre progressif",
+    enduranceRatio: 0.65,
+    volumeMultiplier: 1.0,
+    pitch: "Le compromis le plus robuste entre base aérobie et travail qualitatif — la charge la plus stable dans la durée.",
+  },
+  {
+    id: "regularite",
+    label: "Régularité & fraîcheur",
+    enduranceRatio: 0.70,
+    volumeMultiplier: 0.92,
+    pitch: "Priorité à l'endurance fondamentale et à la récupération — volume légèrement réduit pour rester frais et limiter le risque de blessure.",
+  },
+  {
+    id: "intensite-maitrisee",
+    label: "Intensité maîtrisée",
+    enduranceRatio: 0.60,
+    volumeMultiplier: 1.05,
+    pitch: "Un peu plus de travail qualitatif, au maximum de ce que permet la règle des 60-70% — pour progresser plus vite quand la base est déjà là.",
+  },
+];
+
+const PROGRAM_TIER_META = [
+  { key: "or", label: "Choix n°1 de l'IA", icon: "🥇" },
+  { key: "argent", label: "Choix n°2", icon: "🥈" },
+  { key: "bronze", label: "Choix n°3", icon: "🥉" },
+];
+
+// Alterne fondamentale / intensité dans la semaine (plutôt que de grouper les
+// séances dures) et termine toujours par la sortie longue si elle existe,
+// puisqu'elle se place naturellement en fin de semaine (week-end).
+function orderSessions(sessions) {
+  const longue = sessions.find((s) => /longue/i.test(s.type));
+  const rest = sessions.filter((s) => s !== longue);
+  const fond = rest.filter((s) => s.cat === "fondamentale");
+  const inten = rest.filter((s) => s.cat === "intensite");
+  const ordered = [];
+  let fi = 0, ii = 0;
+  while (fi < fond.length || ii < inten.length) {
+    if (fi < fond.length) ordered.push(fond[fi++]);
+    if (ii < inten.length) ordered.push(inten[ii++]);
+  }
+  if (longue) ordered.push(longue);
+  return ordered;
+}
+
+function buildProgramVariant(philosophy, ctx) {
+  const { joursCount, jourLabels, volumeKm, niveauSuffix, intensiteCap, library, contraintes } = ctx;
+
+  let nIntensite = Math.round(joursCount * (1 - philosophy.enduranceRatio));
+  nIntensite = Math.min(nIntensite, intensiteCap);
+  if (contraintes.includes("pas-fractionne")) nIntensite = 0;
+  const intensitePoolAll = library.filter((s) => s.cat === "intensite");
+  nIntensite = Math.min(nIntensite, intensitePoolAll.length, joursCount - 1 >= 0 ? joursCount : 0);
+
+  let nFondamentale = joursCount - nIntensite;
+  // Garde-fou : ne jamais descendre sous 60% d'endurance fondamentale, même
+  // après le plafonnement de l'intensité par le niveau ou les contraintes.
+  const minFondamentale = Math.ceil(joursCount * 0.6);
+  if (nFondamentale < minFondamentale) {
+    nFondamentale = Math.min(joursCount, minFondamentale);
+    nIntensite = joursCount - nFondamentale;
   }
 
-  // Le nombre de séances suit les jours choisis (nouveau format) ou, à défaut,
-  // l'ancien champ joursDispo (profils enregistrés avant cette mise à jour).
-  const joursSemaine = Array.isArray(profil.joursSemaine) ? profil.joursSemaine : [];
-  const joursCount = joursSemaine.length || parseInt(profil.joursDispo, 10) || 3;
-  const n = Math.min(joursCount, pool.length);
-  const suffix = NIVEAU_SUFFIX[profil.niveau] || "";
+  const fondamentalePool = library.filter((s) => s.cat === "fondamentale");
+  const intensitePool = intensitePoolAll;
 
+  const sessions = [];
+  const longue = fondamentalePool.find((s) => /longue/i.test(s.type));
+  let restFond = nFondamentale;
+  if (longue && restFond > 0) { sessions.push(longue); restFond--; }
+  const fondNonLongue = fondamentalePool.filter((s) => s !== longue);
+  let fi = 0;
+  while (restFond > 0) {
+    sessions.push(fondNonLongue[fi % Math.max(fondNonLongue.length, 1)] || fondamentalePool[0]);
+    fi++;
+    restFond--;
+  }
+  let ii = 0;
+  let restInt = nIntensite;
+  while (restInt > 0 && intensitePool.length) {
+    sessions.push(intensitePool[ii % intensitePool.length]);
+    ii++;
+    restInt--;
+  }
+
+  const ordered = orderSessions(sessions);
+  const joursFinal = jourLabels && jourLabels.length === ordered.length ? jourLabels : ordered.map((_, i) => `Séance ${i + 1}`);
+
+  const volumeVariant = Math.round(volumeKm * philosophy.volumeMultiplier);
+  const volumeFond = Math.round(volumeVariant * philosophy.enduranceRatio);
+  const volumeInt = volumeVariant - volumeFond;
+
+  const finalSessions = ordered.map((s, i) => ({
+    jour: joursFinal[i],
+    type: s.type + niveauSuffix,
+    cat: s.cat,
+    effort: s.effort,
+  }));
+
+  const fondCount = ordered.filter((s) => s.cat === "fondamentale").length;
+  const intCount = ordered.length - fondCount;
+
+  return {
+    id: philosophy.id,
+    label: philosophy.label,
+    pitch: philosophy.pitch,
+    sessions: finalSessions,
+    volumeKm: volumeVariant,
+    volumeFond,
+    volumeInt,
+    ratioFondSessions: ordered.length ? Math.round((fondCount / ordered.length) * 100) : 0,
+    ratioFondVolume: volumeVariant ? Math.round((volumeFond / volumeVariant) * 100) : 0,
+    nFondamentale: fondCount,
+    nIntensite: intCount,
+  };
+}
+
+// Score heuristique qui simule l'arbitrage de l'IA entre les 3 variantes :
+// respect strict de la règle 60-70%, cohérence avec le niveau, les
+// contraintes déclarées et le volume hebdo indiqué par le coureur.
+function scoreProgramVariant(variant, profil, ctx) {
+  let score = 100;
+
+  const centre = 65; // centre de la fourchette 60-70%
+  const hors60_70Sessions = variant.ratioFondSessions < 58 || variant.ratioFondSessions > 72;
+  const hors60_70Volume = variant.ratioFondVolume < 58 || variant.ratioFondVolume > 72;
+  if (hors60_70Sessions) score -= 20;
+  if (hors60_70Volume) score -= 20;
+  score -= Math.abs(centre - variant.ratioFondSessions) * 0.6;
+  score -= Math.abs(centre - variant.ratioFondVolume) * 0.3;
+
+  score -= Math.abs(variant.nIntensite - Math.min(ctx.intensiteCap, Math.max(variant.sessions.length - 1, 0))) * 4;
+
+  if (ctx.contraintes.includes("pas-fractionne") && variant.nIntensite > 0) score -= 40;
+  if (ctx.contraintes.includes("sensible-blessure")) score -= variant.nIntensite * 6;
+
+  if (profil.volumeHebdo && VOLUME_MIDPOINT_KM[profil.volumeHebdo]) {
+    const declared = VOLUME_MIDPOINT_KM[profil.volumeHebdo];
+    score -= (Math.abs(variant.volumeKm - declared) / declared) * 30;
+  }
+
+  if (["semi", "marathon"].includes(profil.objectif) && !variant.sessions.some((s) => /longue/i.test(s.type))) {
+    score -= 25;
+  }
+
+  return Math.round(score);
+}
+
+// Génère les 3 propositions de programme pour un profil donné, triées par
+// score décroissant, et leur attribue une médaille (or / argent / bronze).
+// Fonction pure : à profil identique, elle renvoie toujours le même classement.
+function generateProgramOptions(profil) {
+  const contraintes = Array.isArray(profil.contraintes) ? profil.contraintes : [];
+  const joursSemaine = Array.isArray(profil.joursSemaine) ? profil.joursSemaine : [];
+  const library = SESSION_LIBRARY[profil.objectif] || SESSION_LIBRARY.forme;
+
+  const joursCount = joursSemaine.length || parseInt(profil.joursDispo, 10) || 3;
   const jourLabels = joursSemaine.length
     ? JOURS_SEMAINE.filter((j) => joursSemaine.includes(j.id)).map((j) => j.label)
     : null;
 
-  const sessions = [];
-  for (let i = 0; i < n; i++) {
-    sessions.push({
-      jour: jourLabels ? jourLabels[i] : `Séance ${i + 1}`,
-      type: pool[i] + suffix,
-    });
-  }
-  return sessions;
+  const ctx = {
+    joursCount,
+    jourLabels,
+    volumeKm: estimateWeeklyVolumeKm(profil, joursCount),
+    niveauSuffix: NIVEAU_SUFFIX[profil.niveau] || "",
+    intensiteCap: NIVEAU_INTENSITE_CAP[profil.niveau] ?? 2,
+    library,
+    contraintes,
+  };
+
+  const variants = PROGRAM_PHILOSOPHIES.map((ph) => buildProgramVariant(ph, ctx));
+  variants.forEach((v) => { v.score = scoreProgramVariant(v, profil, ctx); });
+  variants.sort((a, b) => b.score - a.score);
+
+  return variants.map((v, i) => ({ ...v, tier: PROGRAM_TIER_META[i] || PROGRAM_TIER_META[PROGRAM_TIER_META.length - 1] }));
 }
 
 function labelFor(list, id) {
@@ -3059,6 +3453,32 @@ async function saveProfil(profil) {
     });
   } catch (e) {
     setState({ profilSaving: false, error: "Échec de l'enregistrement du profil : " + e.message });
+  }
+}
+
+// ============================================================
+// Programme actif — id de la variante (or/argent/bronze) choisie par
+// le coureur parmi les 3 propositions générées, persisté à part du profil.
+// ============================================================
+
+function getProgrammeActifId() {
+  return state.session?.user?.user_metadata?.programme_actif || null;
+}
+
+async function saveProgrammeActif(programmeId) {
+  setState({ programmeActivating: true, error: null });
+  try {
+    const { data: updated, error } = await supabase.auth.updateUser({
+      data: { programme_actif: programmeId },
+    });
+    if (error) throw error;
+    setState({
+      programmeActivating: false,
+      programmeSelectedId: null,
+      session: { ...state.session, user: updated.user },
+    });
+  } catch (e) {
+    setState({ programmeActivating: false, error: "Échec de l'activation du programme : " + e.message });
   }
 }
 
@@ -4796,17 +5216,69 @@ function tabProgramme() {
     `;
   }
 
-  const sessions = generateProgram(profil);
-  const rowsHtml = sessions.map((s) => `
+  const options = generateProgramOptions(profil);
+  const activeId = getProgrammeActifId();
+  const selectedId = state.programmeSelectedId || activeId || options[0].id;
+  const selected = options.find((o) => o.id === selectedId) || options[0];
+
+  const optionsHtml = options.map((o) => `
+    <button type="button" class="program-option-card tier-${o.tier.key} ${o.id === selectedId ? "is-selected" : ""}" data-programme-id="${o.id}">
+      <div class="program-option-top">
+        <span class="program-option-medal">${o.tier.icon}</span>
+        <div>
+          <div class="program-option-tier-label">${o.tier.label}</div>
+          <h3 class="program-option-title">${o.label}</h3>
+        </div>
+      </div>
+      <p class="program-option-pitch">${o.pitch}</p>
+      <div class="program-option-stats">
+        <span><strong>${o.volumeKm}</strong> km/sem.</span>
+        <span><strong>${o.sessions.length}</strong> séances</span>
+      </div>
+      <div class="program-ratio-bar">
+        <span class="program-ratio-fill-fond" style="width:${o.ratioFondSessions}%"></span>
+        <span class="program-ratio-fill-int" style="width:${100 - o.ratioFondSessions}%"></span>
+      </div>
+      <div class="program-ratio-legend">
+        <span class="is-fond">${o.ratioFondSessions}% fondamentale</span>
+        <span class="is-int">${100 - o.ratioFondSessions}% intensité</span>
+      </div>
+      <span class="program-option-score">Score IA ${o.score}/100</span>
+    </button>
+  `).join("");
+
+  const rowsHtml = selected.sessions.map((s) => `
     <div class="program-row">
       <span class="program-day">${s.jour}</span>
-      <span class="program-desc">${s.type}</span>
+      <div>
+        <div class="program-row-main">
+          <span class="program-desc">${s.type}</span>
+          <span class="session-cat-chip cat-${s.cat}">${s.cat === "fondamentale" ? "Endurance fond." : "Intensité"}</span>
+        </div>
+        <p class="program-effort">${s.effort}</p>
+      </div>
     </div>
   `).join("");
 
   return `
     <section class="panel">
-      <h2>Ton programme</h2>
+      <div class="program-options-intro">
+        <h2>Propositions de l'IA</h2>
+        <span class="muted">${options.length} programmes, ≥ 60% d'endurance fondamentale garantis</span>
+      </div>
+      <p class="muted">Générées à partir de ton profil. Touche une carte pour la prévisualiser, puis active celle qui te convient.</p>
+      <div class="program-options-grid">${optionsHtml}</div>
+    </section>
+
+    <section class="panel">
+      <div class="program-detail-header">
+        <h2>${selected.tier.icon} ${selected.label}${selected.id === activeId ? "" : " (aperçu)"}</h2>
+        ${selected.id === activeId
+          ? `<span class="program-active-badge">Programme actif</span>`
+          : `<button type="button" class="btn-chip" id="btn-activate-programme" data-programme-id="${selected.id}" ${state.programmeActivating ? "disabled" : ""}>${state.programmeActivating ? "Activation…" : "Activer ce programme"}</button>`
+        }
+      </div>
+      <p class="muted">${selected.volumeKm} km sur la semaine, dont ${selected.volumeFond} km d'endurance fondamentale (${selected.ratioFondVolume}%) et ${selected.volumeInt} km d'intensité (${100 - selected.ratioFondVolume}%).</p>
       <div class="program-list">${rowsHtml}</div>
     </section>
     ${profilSection}
@@ -5674,6 +6146,15 @@ function attachHandlers() {
       e.preventDefault();
       savePseudo(document.getElementById("f-pseudo").value);
     });
+  }
+
+  document.querySelectorAll(".program-option-card[data-programme-id]").forEach((card) => {
+    card.addEventListener("click", () => setState({ programmeSelectedId: card.dataset.programmeId }));
+  });
+
+  const activateProgrammeBtn = document.getElementById("btn-activate-programme");
+  if (activateProgrammeBtn) {
+    activateProgrammeBtn.addEventListener("click", () => saveProgrammeActif(activateProgrammeBtn.dataset.programmeId));
   }
 
   const editProfilBtn = document.getElementById("btn-edit-profil");
